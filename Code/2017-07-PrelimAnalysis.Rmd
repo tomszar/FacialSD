@@ -4,17 +4,19 @@ output: html_document
 
 # Preliminaries
 
-Calling libraries
+We will load the necessary libraries
+
 ```{r libraries, warning=FALSE}
 library(ggplot2)
 library(dplyr)
 library(GGally)
 library(plotly)
 library(gridExtra)
-library(IRdisplay)
+library(psych)
 ```
 
 Setting wd and loading databases
+
 ```{r databases}
 setwd('..')
 path <- getwd()
@@ -29,6 +31,8 @@ facets   <- read.csv("facets.csv", header=F)
 
 ## Data cleaning
 
+For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age)
+
 ```{r}
 #Remove no sex participants
 coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
@@ -38,25 +42,43 @@ coeffs = na.omit(coeffs)
 dim(coeffs)
 ```
 
+After cleaning, we end up with `r length(coeffs)` individuals
+
 # Descriptive stats
+
+We can look at summary statistics
 
 ```{r}
 summary(coeffs[,2:5])
 ```
+
+As well as summary statistics grouped by sex
+
+```{r}
+describe.by(coeffs[,3:5], coeffs$Sex)
+
+```
+
+we can also explore some correlograms
 
 ```{r}
 ggpairs(coeffs, columns = 2:7, ggplot2::aes(colour=Sex, alpha = 0.2), 
        lower = list(continuous = "smooth"))
 ```
 
-Creating consensus faces
+# Facial sexual dimorphism analysis
+
+First, we will create consensus faces, taking the average male and female
+
 ```{r}
 conm <- colMeans(coeffs[coeffs$Sex == 'Male', 6:ncol(coeffs)])
 conf <- colMeans(coeffs[coeffs$Sex == 'Female', 6:ncol(coeffs)])
 consensus <- as.data.frame(t(data.frame(conm, conf)))
+remove(conm, conf)
 ```
 
-Scatter plot with male and female consensus faces highlighted 
+This are scatter plots with PC1 with PC2, and PC3 with PC4. The male and female consensus faces are highlighted to show their position in relation to the whole data set.
+
 ```{r}
 plot1 <- ggplot(coeffs, aes(PC1, PC2, colour=Sex)) + geom_point(alpha=0.1) + 
             geom_point(data = consensus[,1:2], aes(PC1, PC2), color="red", size=3)
@@ -67,16 +89,14 @@ plot2 <- ggplot(coeffs, aes(PC3, PC4, colour=Sex)) + geom_point(alpha=0.1) +
 grid.arrange(plot1, plot2)
 ```
 
-# Facial SD 
-
-Total SD
+To estimate the total FSD we substract the male consensus face to the female one
 
 ```{r}
 totalSD <- consensus[2,] - consensus[1,]
 totalSD
 ```
 
-This are the results from the multivariate linear regression, using different statistics. 
+To obtain the allometric component, we run a multivariate linear regression. Also, we can compute manova tables to estimate the effect of Sex and Height on face shape (face PCs) 
 
 ```{r}
 #Multivariate linear regression of height and sex on face
@@ -87,7 +107,7 @@ summary(manova(fit), test="Roy")
 summary(manova(fit), test="Pillai")
 ```
 
-Testing wheter there is a Sex * Height interaction
+Furthermore, we can test whether there is a Sex by Height interaction
 
 ```{r}
 #Multivariate linear regression of height and sex on face
@@ -97,7 +117,6 @@ summary(manova(fitint), test="Wilks")
 summary(manova(fitint), test="Roy")
 summary(manova(fitint), test="Pillai")
 ```
-
 
 
 Allometric and non-allometric components
@@ -167,15 +186,9 @@ source("Distances.R")
 eucdist <- getDistance(coordsheight[ ,1], coordsheight[,2])
 ```
 
-
 ```{r}
 source("PlotFaces.R")
 Plot1Face(coordsheight[,1], facets, colormap=eucdist[,1])
-```
-
-
-```{r}
-
 ```
 
 ```{r}
