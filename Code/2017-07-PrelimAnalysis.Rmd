@@ -1,7 +1,11 @@
+---
+output: html_document
+---
+
 # Preliminaries
 
 Calling libraries
-```{r libraries, echo=FALSE}
+```{r libraries, warning=FALSE}
 library(ggplot2)
 library(dplyr)
 library(GGally)
@@ -20,6 +24,7 @@ getwd()
 coeffs   <- read.csv("coeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 means    <- read.csv("means.csv", header=F)
+facets   <- read.csv("facets.csv", header=F)
 ```
 
 ## Data cleaning
@@ -49,7 +54,6 @@ Creating consensus faces
 conm <- colMeans(coeffs[coeffs$Sex == 'Male', 6:ncol(coeffs)])
 conf <- colMeans(coeffs[coeffs$Sex == 'Female', 6:ncol(coeffs)])
 consensus <- as.data.frame(t(data.frame(conm, conf)))
-consensus
 ```
 
 Scatter plot with male and female consensus faces highlighted 
@@ -133,18 +137,6 @@ dim(coords)
 ```
 
 ```{r}
-face1 <- matrix(coords[ ,1], ncol=3, byrow=T)
-head(face1)
-```
-
-```{r}
-myPlot <- plot_ly() %>% 
-  add_trace(data = face1,  x=face1[,1], y=face1[,2], z=face1[,3], type="mesh3d") 
-myPlot
-#intensity = c(0, 0.33, 0.66, 1)
-```
-
-```{r}
 minhf <- coef(fit)[1,] + (coef(fit)[3,] * min(coeffs[,4]))
 maxhf <- coef(fit)[1,] + (coef(fit)[3,] * max(coeffs[,4]))
 minhm <- coef(fit)[1,] + coef(fit)[2,] + (coef(fit)[3,] * min(coeffs[,4]))
@@ -157,19 +149,39 @@ ggplot(coeffs, aes(PC1, PC2, colour=Sex)) + geom_point(alpha=0.1) +
 
 ```{r}
 coordsheight <- apply(as.matrix(heigths) %*% t(as.matrix(eigenvec)), 1, function(x) x + t(means))
-face1 <- matrix(coordsheight[ ,1], ncol=3, byrow=T)
-face2 <- matrix(coordsheight[ ,2], ncol=3, byrow=T)
+coordssd     <- apply(as.matrix(rbind(2*totalSD, -2*totalSD)) %*% t(as.matrix(eigenvec)), 1, function(x) x + t(means))
 ```
 
 ```{r}
-myPlot <- plot_ly() %>% 
-  add_trace(data = face1,  x=face1[,1], y=face1[,2], z=face1[,3], type="mesh3d") 
-myPlot
+source("PlotFaces.R")
+Plot2Faces(coordsheight[ ,1], coordsheight[,2], facets)
+Plot2Faces(coordssd[ ,1], coordssd[,2], facets)
+```
+
+
+Plot with distances
+
+Example for euclidean distance function
+```{r}
+source("Distances.R")
+eucdist <- getDistance(coordsheight[ ,1], coordsheight[,2])
+```
+
+
+```{r}
+source("PlotFaces.R")
+Plot1Face(coordsheight[,1], facets, colormap=eucdist[,1])
+```
+
+
+```{r}
+
 ```
 
 ```{r}
-myPlot <- plot_ly() %>% 
-  add_trace(data = face2,  x=face2[,1], y=face2[,2], z=face2[,3], type="mesh3d") 
+facecolor <- rep("cornsilk", nrow(facets))
+myPlot <- plot_ly(x=face1[,1], y=face1[,2], z=face1[,3], i = facets[, 1]-1, j = facets[, 2]-1, k = facets[, 3]-1, 
+              facecolor = facecolor)
 myPlot
 ```
 
