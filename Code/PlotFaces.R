@@ -44,6 +44,7 @@ Plot1Face <- function(face1, facets, colormap=NULL)
 {
   # Plots one face, with the corresponding facets
   # If colormap is defined, it will be plotted
+  require(grDevices)
   rface1 <- matrix(face1, ncol=3, byrow=T)
   
   ax <- list(
@@ -76,11 +77,11 @@ Plot1Face <- function(face1, facets, colormap=NULL)
     myPlot <- plot_ly(
       x = rface1[,1], y = rface1[,2], z = rface1[,3],
       i = facets[, 1]-1, j = facets[, 2]-1, k = facets[, 3]-1,
-      colors = colorRamp(c("red", "blue")), intensity = rescale(colormap), opacity = 0.8,
+      colors = colorRamp(c("yellow", "red", "black")), intensity = scales::rescale(colormap), opacity = 1,
       type = "mesh3d"
     ) %>% 
       layout(scene = scene)
   }
-  
+  #colorRamp(c("white", "black"))
   return(myPlot)
 }
