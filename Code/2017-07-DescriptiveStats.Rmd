@@ -47,7 +47,7 @@ coeffs = na.omit(coeffs)
 dim(coeffs)
 ```
 
-After cleaning, we end up with `r length(coeffs)` individuals
+After cleaning, we end up with `r nrow(coeffs)` individuals
 
 # Descriptive stats
 
