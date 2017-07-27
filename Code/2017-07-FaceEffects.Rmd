@@ -1,0 +1,100 @@
+---
+output:
+  html_document: default
+  html_notebook: default
+---
+# Preliminaries
+
+We will load the necessary libraries
+
+```{r libraries, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(plotly)
+library(tidyr)
+```
+
+Setting wd and loading databases
+
+```{r databases}
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/PCA", sep = ""))
+#Read data
+coeffs   <- read.csv("coeffs.csv")
+eigenvec <- read.csv("eigenvectors.csv", header=F)
+eigenval <- read.csv("eigenvalues.csv", header=F)
+means    <- read.csv("means.csv", header=F)
+facets   <- read.csv("facets.csv", header=F)
+```
+
+```{r databases2 }
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/FSD", sep = ""))
+load("fitmodel.RData")
+vectors <- read.csv("vectors.csv", row.names = 1)
+```
+
+
+## Data cleaning
+
+For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age)
+
+```{r data cleaning}
+#Remove no sex participants
+coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
+coeffs = droplevels(coeffs)
+#Removed NAs from database
+coeffs = na.omit(coeffs)
+dim(coeffs)
+```
+
+After cleaning, we end up with `r nrow(coeffs)` individuals
+
+# Face plots
+
+Facial sexual dimorphism
+
+```{r fsd coordinates}
+fsdcoords <- data.frame(Tot.male = rep(0, nrow(means)), Tot.female = rep(0, nrow(means)), 
+                        Allo.male = rep(0, nrow(means)), Allo.female = rep(0, nrow(means)),
+                        Nallo.male = rep(0, nrow(means)), Nallo.female = rep(0, nrow(means)))
+fsdcoords[,c(1,3,5)] <- apply(as.matrix(vectors[3:5,] * -2) %*% t(as.matrix(eigenvec)), 1, function(x) x + t(means))
+fsdcoords[,c(2,4,6)] <- apply(as.matrix(vectors[3:5,] * 2) %*% t(as.matrix(eigenvec)), 1, function(x) x + t(means))
+averagecoords <- t(( colMeans(vectors[1:2,]) %*% t(as.matrix(eigenvec))) + t(means))
+```
+
+```{r 3d fsd plots}
+source("PlotFaces.R")
+Plot2Faces(fsdcoords[ ,1], fsdcoords[,2], facets, "Total SD")
+Plot2Faces(fsdcoords[ ,3], fsdcoords[,4], facets, "Allometric SD")
+Plot2Faces(fsdcoords[ ,5], fsdcoords[,6], facets, "Non allometric SD")
+```
+
+```{r distances}
+source("Distances.R")
+eucdist <- data.frame(Totdist = rep(0, nrow(means)), 
+                      Allodist =  rep(0, nrow(means)), 
+                      Nallodist = rep(0, nrow(means)))
+
+eucdist[,1] <- getDistance(fsdcoords[ ,1], fsdcoords[,2])
+eucdist[,2] <- getDistance(fsdcoords[ ,3], fsdcoords[,4])
+eucdist[,3] <- getDistance(fsdcoords[ ,5], fsdcoords[,6])
+
+#On the same scale
+eucdist <- gather(eucdist, type, dist)
+eucdist$dist <- scales::rescale(eucdist$dist)
+```
+
+
+```{r distplots}
+source("PlotFaces.R")
+Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Totdist") %>% dplyr::select(dist))), 
+          title = "Total SD")
+Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Allodist") %>% dplyr::select(dist))), 
+          title = "Allometric SD")
+Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Nallodist") %>% dplyr::select(dist))), 
+          title = "Non allometric SD")
+```
