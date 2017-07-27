@@ -1,5 +1,7 @@
 ---
-output: html_document
+output: 
+  html_document: default
+  html_notebook: default
 ---
 
 # Preliminaries
@@ -48,46 +50,7 @@ dim(coeffs)
 
 After cleaning, we end up with `r length(coeffs)` individuals
 
-# Descriptive stats
-
-We can look at summary statistics
-
-```{r}
-summary(coeffs[,2:5])
-```
-
-As well as summary statistics grouped by sex
-
-```{r}
-describeBy(coeffs[,3:5], coeffs$Sex)
-```
-
-we can also explore some correlograms
-
-```{r}
-ggpairs(coeffs, columns = 2:7, ggplot2::aes(colour=Sex, alpha = 0.2), 
-       lower = list(continuous = "smooth"))
-```
-
 # Facial sexual dimorphism analysis
-
-Comparing sex differences in each PC using joy plots
-
-```{r}
-source("PlotPCs.R")
-p1 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC1", "PC9")
-p2 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC10", "PC19")
-p3 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC20", "PC29")
-p4 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC30", "PC39")
-grid.arrange(p1, p2, p3, p4)
-
-p1 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC40", "PC49")
-p2 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC50", "PC59")
-p3 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC60", "PC69")
-p4 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC70", "PC79")
-grid.arrange(p1, p2, p3, p4)
-```
-
 
 Comparing males and females, using Hotelling's T^2 statistic. The results are virtually identical when using a normalized PC space (not shown here)
 
