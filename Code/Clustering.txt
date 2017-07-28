@@ -1,0 +1,2 @@
+cd "R:\ShriverLab\Genotype Data\MergedFilesets\160603_UnionGenosForPeter"
+./plink --bfile 160603_UnionGenos_hg19hg38_IDSexParentsUpdated --allow-no-sex --no-pheno --geno --indep 50 5 1.5 --cluster --mds-plot 30 --pca 30 --out "C:\Users\tzarzar\Box Sync\Research\FacialSD\Results\GenClustering\Clus"
