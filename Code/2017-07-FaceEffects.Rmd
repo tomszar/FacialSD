@@ -10,9 +10,7 @@ We will load the necessary libraries
 ```{r libraries, warning=FALSE}
 library(ggplot2)
 library(dplyr)
-library(gridExtra)
 library(plotly)
-library(tidyr)
 ```
 
 Setting wd and loading databases
