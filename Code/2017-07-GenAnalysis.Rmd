@@ -1,0 +1,120 @@
+---
+output: 
+  html_document:
+    fig_width: 12 
+    fig_height: 10 
+---
+
+# Preliminaries
+
+Calling libraries
+
+```{r libraries, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(GGally)
+```
+
+Reading data
+
+```{r databases}
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/GenClustering", sep = ""))
+pca.eigenval <- read.csv("Clus.eigenval", sep = "", header = F)
+pca.eigenvec <- read.csv("Clus.eigenvec", sep = "", header = F)
+```
+
+## Data cleaning
+
+Naming data columns
+```{r naming cols}
+PCnames <- sprintf("PC%s",seq(1:30))
+colnames(pca.eigenvec) <- c("FID", "IID", PCnames)
+```
+
+
+Creating new column to plot hapmap pops against our samples.
+
+```{r new column}
+pca.eigenvec$database <- pca.eigenvec$FID 
+pca.eigenvec$database[!(pca.eigenvec$FID == "ASW" | pca.eigenvec$FID == "CEU" | pca.eigenvec$FID == "CHB" | pca.eigenvec$FID == "CHD" | 
+                          pca.eigenvec$FID == "GIH" | pca.eigenvec$FID == "JPT" | pca.eigenvec$FID == "LWK" | pca.eigenvec$FID == "MEX" |
+                          pca.eigenvec$FID == "MKK" | pca.eigenvec$FID == "TSI" | pca.eigenvec$FID == "YRI")] <- "ADAPT"
+```
+
+Because plink output is a normalized PC, clustering did not achieved very good results. 
+Now we de-normalized the PCA by multiplying by the standar deviation.
+
+```{r de-normalizing PCA}
+pca.eigenvec[,3:32] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:32])))
+```
+
+# Exploratory analyses
+
+```{r screeplot, fig.height=4, fig.width=6} 
+barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames, 
+       main = "Variances",
+       xlab = "Principal Components",
+       ylab = "Eigenvalue",
+       col = "steelblue")
+```
+
+
+```{r correlogram}
+ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "blank", diag = NULL)
+```
+
+There are evident outliers in our sample (look PC7).
+
+```{r removing out}
+pca.eigenvec <- filter(pca.eigenvec, PC7 > -2)
+ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "blank", diag = NULL)
+```
+
+# Clustering
+
+```{r clustering}
+d  <- dist(as.matrix(pca.eigenvec[,3:32]))
+hc <- hclust(d)
+plot(hc)
+pca.eigenvec$groups <- as.factor(cutree(hc, k=5)) # cut tree into 5 clusters
+# draw dendogram with red borders around the 5 clusters
+ggpairs(pca.eigenvec, mapping = aes(color = groups), columns = 3:12, upper = "blank", diag = NULL)
+ggpairs(filter(pca.eigenvec, database != "ADAPT"), mapping = aes(color = groups), columns = 3:12, upper = "blank", diag = NULL)
+ggpairs(filter(pca.eigenvec, database == "ADAPT"), mapping = aes(color = groups), columns = 3:12, upper = "blank", diag = NULL)
+
+```
+
+# Combining datasets
+
+```{r read facedata}
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/PCA", sep = ""))
+getwd()
+#Read data
+coeffs   <- read.csv("coeffs.csv")
+```
+
+```{r merging}
+colnames(coeffs)[1] <- "IID"
+total      <- merge(pca.eigenvec, coeffs, by = "IID") 
+FacePCA    <- total[,39:125]
+GenPCA     <- total[,3:32]
+Covariates <- total[,c(1,2,34:38)]
+
+PCnames <- sprintf("PC%s",seq(1:87))
+colnames(FacePCA) <- PCnames
+
+PCnames <- sprintf("PC%s",seq(1:30))
+colnames(GenPCA) <- PCnames
+
+MergedDat <- list(Covariates, FacePCA, GenPCA) 
+
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/MergedData", sep = ""))
+save(MergedDat, file = "MergedDat.RData")
+```
+
