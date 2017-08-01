@@ -28,6 +28,7 @@ pca.eigenvec <- read.csv("Clus.eigenvec", sep = "", header = F)
 ## Data cleaning
 
 Naming data columns
+
 ```{r naming cols}
 PCnames <- sprintf("PC%s",seq(1:30))
 colnames(pca.eigenvec) <- c("FID", "IID", PCnames)
@@ -50,7 +51,15 @@ Now we de-normalized the PCA by multiplying by the standar deviation.
 pca.eigenvec[,3:32] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:32])))
 ```
 
-# Exploratory analyses
+# Descriptive and exploratory analyses
+
+Some summary stats
+
+```{r summary}
+summary(pca.eigenvec[,c(1,2,33,34)])
+```
+ 
+PCA screeplot
 
 ```{r screeplot, fig.height=4, fig.width=6} 
 barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames, 
@@ -60,6 +69,7 @@ barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames,
        col = "steelblue")
 ```
 
+Correlogram between first 10 PCs
 
 ```{r correlogram}
 ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "blank", diag = NULL)
@@ -68,6 +78,7 @@ ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "
 There are evident outliers in our sample (look PC7).
 
 ```{r removing out}
+pca.eigenvec$IID[pca.eigenvec$PC7 < -2]
 pca.eigenvec <- filter(pca.eigenvec, PC7 > -2)
 ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "blank", diag = NULL)
 ```
