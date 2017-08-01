@@ -1,6 +1,16 @@
-PlotPCs <- function(dataset, minPC, maxPC)
+PlotPCs <- function(dataset, group, minPC, maxPC)
 {
-  longdb <- gather(dataset, "PC", "value", -Sex)
+  # Function that will plot joy plots according to grouping factor
+  # from a minPC to maxPC
+  # Dataset must contain only PC values, or numeric
+  
+  require(tidyr)
+  require(ggplot2)
+  require(ggjoy)
+  
+  newdat       <- cbind(group, dataset)
+  newdat$group <- as.factor(newdat$group)
+  longdb <- gather(newdat, "PC", "value", -group)
   vals   <- as.numeric(sapply(longdb$PC, function(x) {strsplit(x, "PC")[[1]][2]}))
   longdb[order(vals), ]
   
@@ -14,7 +24,7 @@ PlotPCs <- function(dataset, minPC, maxPC)
   toval   <- mean(longdb$value[fromPC:toPC]) + 2*sd(longdb$value[fromPC:toPC])
 
   p1 <- ggplot(longdb[fromPC:toPC , ], aes(y = PC )) + 
-        geom_joy(aes(x = value, fill = Sex), alpha = .6, color = "white", from = fromval, to = toval) +
+        geom_joy(aes(x = value, fill = group), alpha = .6, color = "white", from = fromval, to = toval) +
         theme_joy(grid = FALSE)
   
   return(p1)
