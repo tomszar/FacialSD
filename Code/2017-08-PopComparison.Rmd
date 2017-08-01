@@ -1,0 +1,115 @@
+---
+output: 
+  html_document: default
+---
+
+# Preliminaries
+
+Loading libraries
+
+```{r libraries}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+```
+
+Loading databases
+
+```{r databases}
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/MergedData", sep = ""))
+#Read data
+load("MergedDat.RData")
+```
+
+# Data cleaning
+
+I'll remove participants without Male or Female self-identified sex
+
+```{r data cleaning}
+MergedDat[[1]]$IID[!(MergedDat[[1]]$Sex == "Male" | MergedDat[[1]]$Sex == "Female")]
+cleanSex       <- MergedDat[[1]]$Sex == "Male" | MergedDat[[1]]$Sex == "Female"
+MergedDat[[1]] <- dplyr::filter(MergedDat[[1]], cleanSex)
+MergedDat[[2]] <- dplyr::filter(MergedDat[[2]], cleanSex)
+MergedDat[[3]] <- dplyr::filter(MergedDat[[3]], cleanSex)
+MergedDat[[1]]$Sex <- droplevels(MergedDat[[1]]$Sex)
+```
+
+
+# Descriptive and exploratory analyses
+
+```{r summary}
+summary(MergedDat[[1]])
+```
+
+```{r}
+ggplot(MergedDat[[2]], aes(x=PC1, y=PC2, color=MergedDat[[1]]$groups)) + geom_point()
+ggplot(MergedDat[[2]], aes(x=PC3, y=PC4, color=MergedDat[[1]]$groups)) + geom_point()
+```
+
+```{r}
+source("PlotPCs.R")
+p1 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC1", "PC9")
+p2 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC10", "PC19")
+p3 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC20", "PC29")
+p4 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC30", "PC39")
+grid.arrange(p1, p2, p3, p4)
+```
+
+```{r}
+noeur <- !(MergedDat[[1]]$groups == "2")
+
+Males1   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "1" &  MergedDat[[1]]$Sex == "Male") )
+Females1 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "1" &  MergedDat[[1]]$Sex == "Female") )
+Males2   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "2" &  MergedDat[[1]]$Sex == "Male") )
+Females2 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "2" &  MergedDat[[1]]$Sex == "Female") )
+Males3   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "3" &  MergedDat[[1]]$Sex == "Male") )
+Females3 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "3" &  MergedDat[[1]]$Sex == "Female") )
+Males4   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "4" &  MergedDat[[1]]$Sex == "Male") )
+Females4 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "4" &  MergedDat[[1]]$Sex == "Female") )
+Males5   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "5" &  MergedDat[[1]]$Sex == "Male") )
+Females5 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "5" &  MergedDat[[1]]$Sex == "Female") )
+
+consensus <- as.data.frame(t(data.frame(Males1, Females1, Males2, Females2, Males3, Females3, Males4, Females4, Males5, Females5)))
+remove(Males1, Females1, Males2, Females2, Males3, Females3, Males4, Females4, Males5, Females5)
+
+p1 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC1, PC2, colour=filter(MergedDat[[1]], noeur)$groups )) + 
+  geom_point(alpha=0.1) + 
+  geom_point(data = consensus[1:2,], aes(PC1, PC2), color="red", size=3) + 
+  geom_point(data = consensus[3:4,], aes(PC1, PC2), color="blue", size=3) +
+  geom_point(data = consensus[5:6,], aes(PC1, PC2), color="green", size=3) +
+  geom_point(data = consensus[7:8,], aes(PC1, PC2), color="yellow", size=3) + 
+  geom_point(data = consensus[9:10,], aes(PC1, PC2), color="pink", size=3) +
+  theme(legend.position="none") 
+
+p2 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC3, PC4, colour=filter(MergedDat[[1]], noeur)$groups)) + 
+  geom_point(alpha=0.1) + 
+    geom_point(data = consensus[1:2,], aes(PC3, PC4), color="red", size=3) + 
+  geom_point(data = consensus[3:4,], aes(PC3, PC4), color="blue", size=3) +
+  geom_point(data = consensus[5:6,], aes(PC3, PC4), color="green", size=3) +
+  geom_point(data = consensus[7:8,], aes(PC3, PC4), color="yellow", size=3) + 
+  geom_point(data = consensus[9:10,], aes(PC3, PC4), color="pink", size=3) +
+  theme(legend.position="none") 
+          
+p3 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC5, PC6, colour=filter(MergedDat[[1]], noeur)$groups)) + 
+  geom_point(alpha=0.1) + 
+  geom_point(data = consensus[1:2,], aes(PC5, PC6), color="red", size=3) + 
+  geom_point(data = consensus[3:4,], aes(PC5, PC6), color="blue", size=3) +
+  geom_point(data = consensus[5:6,], aes(PC5, PC6), color="green", size=3) +
+  geom_point(data = consensus[7:8,], aes(PC5, PC6), color="yellow", size=3) + 
+  geom_point(data = consensus[9:10,], aes(PC5, PC6), color="pink", size=3) +
+  theme(legend.position="none")
+             
+p4 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC7, PC8, colour=filter(MergedDat[[1]], noeur)$groups)) + 
+  geom_point(alpha=0.1) + 
+  geom_point(data = consensus[1:2,], aes(PC7, PC8), color="red", size=3) + 
+  geom_point(data = consensus[3:4,], aes(PC7, PC8), color="blue", size=3) +
+  geom_point(data = consensus[5:6,], aes(PC7, PC8), color="green", size=3) +
+  geom_point(data = consensus[7:8,], aes(PC7, PC8), color="yellow", size=3) + 
+  geom_point(data = consensus[9:10,], aes(PC7, PC8), color="pink", size=3) +
+  theme(legend.position="none")
+             
+grid.arrange(p1, p2, p3, p4, ncol=2)
+```
+
