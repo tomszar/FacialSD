@@ -1,2 +1,8 @@
 cd "R:\ShriverLab\Genotype Data\MergedFilesets\160603_UnionGenosForPeter"
-./plink --bfile 160603_UnionGenos_hg19hg38_IDSexParentsUpdated --allow-no-sex --no-pheno --geno --indep 50 5 1.5 --cluster --mds-plot 30 --pca 30 --out "C:\Users\tzarzar\Box Sync\Research\FacialSD\Results\GenClustering\Clus"
+cd "C:\Users\tomas\Box Sync\Research\FacialSD\DataBases\Genotypes"
+
+First, we'll remove missing genotype data (--geno), and apply an ld prunning (--indep 10 5 2). 
+We'll then apply a PCA on the HapMap samples and project everyone else in that
+
+./plink --bfile 160603_UnionGenos_hg19hg38_IDSexParentsUpdated --within HapCluster.txt --write-cluster
+./plink --bfile 160603_UnionGenos_hg19hg38_IDSexParentsUpdated --geno --indep 10 5 2 --pca 50 --pca-clusters plink.clst --within HapCluster.txt --out "C:\Users\tomas\Box Sync\Research\FacialSD\Results\GenClustering\Clus"
