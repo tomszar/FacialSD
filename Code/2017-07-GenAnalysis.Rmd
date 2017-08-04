@@ -1,9 +1,11 @@
 ---
 output: 
   html_document:
-    fig_width: 12 
-    fig_height: 10 
+    fig_height: 12
+    fig_width: 10
 ---
+
+In this script I'll analyze the genetic clustering done with plink. 
 
 # Preliminaries
 
@@ -31,7 +33,7 @@ pca.eigenvec <- read.csv("Clus.eigenvec", sep = "", header = F)
 Naming data columns
 
 ```{r naming cols}
-PCnames <- sprintf("PC%s",seq(1:30))
+PCnames <- sprintf("PC%s",seq(1:50))
 colnames(pca.eigenvec) <- c("FID", "IID", PCnames)
 ```
 
@@ -49,7 +51,7 @@ Because plink output is a normalized PC, clustering did not achieved very good r
 Now we de-normalized the PCA by multiplying de eigenvectors by the standard deviation.
 
 ```{r de-normalizing PCA}
-pca.eigenvec[,3:32] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:32])))
+pca.eigenvec[,3:52] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:52])))
 ```
 
 I'll remove samples that contain the word genome (surely those are not in the face files), the word ver (those are controls from the are from the axiom arrays), the word gDNA, as well as those with the name A_103. I've seen that some of those are outliers in some PCs
@@ -66,7 +68,7 @@ I removed `r nrow(removed)` samples.
 
 We also have some outliers in PC5, and PC10. Probably there are also in some other lower PCs
 
-```{r removing outliers, fig.height=4, fig.width=6}
+```{r removing outliers, fig.height=4, fig.width=10}
 p1 <- ggplot(pca.eigenvec, aes(PC5)) + geom_histogram()
 p2 <- ggplot(pca.eigenvec, aes(PC10)) + geom_histogram()
 ggarrange(p1, p2)
@@ -84,12 +86,12 @@ pca.eigenvec <- pca.eigenvec %>% filter(PC5 < 1 & PC10 > -0.5)
 Some summary stats
 
 ```{r summary}
-summary(pca.eigenvec[,c(1,2,33)])
+summary(pca.eigenvec[,c(1,2,53)])
 ```
  
 PCA screeplot
 
-```{r screeplot, fig.height=4, fig.width=6} 
+```{r screeplot, fig.height=4, fig.width=8} 
 barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames, 
        main = "Variances",
        xlab = "Principal Components",
@@ -113,11 +115,11 @@ MKK | Maasai in Kinyawa, Kenya
 TSI | Toscani in Italia
 YRI | Yoruba in Ibadan, Nigeria 
 
-```{r hapmap, echo=F}
+```{r hapmap}
 plothap <- function(dat, x1, y1)
 {
   p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "database")) +
-            geom_point(alpha = 0.2) + theme_pubr()
+            geom_point(alpha = 0.3, size = 2) + theme_pubr()
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
 }
@@ -130,16 +132,17 @@ p5 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC9", "PC10")
 p6 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
-          common.legend = TRUE, legend = "right")
+          common.legend = TRUE, legend = "right", 
+          align = "v")
 ```
 
-```{r hapmap center, echo=F}
+```{r hapmap center}
 meanshap <- filter(pca.eigenvec, database != "ADAPT") %>% group_by(database) %>% 
                 select(contains("PC")) %>% summarise_all(funs(mean))
 
 plothapmeans <- function(dat, x1, y1){
   p1 <- ggplot(dat, aes_string(x = x1, y = y1, label = "database")) + 
-          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.5) + 
+          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.6) + 
           theme_pubr(legend = "none")
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
@@ -153,17 +156,18 @@ p5 <- plothapmeans(meanshap, "PC9", "PC10")
 p6 <- plothapmeans(meanshap, "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6,
-          nrow = 3, ncol = 2)
+          nrow = 3, ncol = 2, 
+          align = "v")
 ```
 
 If we plot our samples together with the HapMap, we see the following
 
-```{r hapmap plus adapt, echo=F}
+```{r hapmap plus adapt}
 plothapsamp <- function(dat1, dat2, x1, y1)
 {
   p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
           geom_point(data = dat2, 
-                     aes_string(x = x1, y = y1), alpha = 0.4) + 
+                     aes_string(x = x1, y = y1), alpha = 0.3) + 
           geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.4) + 
           theme_pubr(legend = "none")
   p1 <- ggpar(p1, palette = "jama")
@@ -178,11 +182,12 @@ p5 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC9", "P
 p6 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6,
-          nrow = 3, ncol = 2)
+          nrow = 3, ncol = 2,
+          align = "v")
 ```
 
 Looking at our samples with population designation
-```{r samples w/pop, echo=F}
+```{r samples w/pop}
 plothapgroup <- function(dat1, dat2, x1, y1)
 {
   p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
@@ -207,10 +212,127 @@ p6 <- plothapgroup(eurhap, eursamp, "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6,
           nrow = 3, ncol = 2,
-          common.legend = TRUE, legend = "right")
+          common.legend = TRUE, legend = "right",
+          align = "v")
 ```
 
 # Clustering
+
+For an initial clustering attempt I'll group the HapMap populations into continents, as shown in the table:
+
+POP | Continent 
+----|------------
+ASW | Africa
+CEU | Europe
+CHB | Asia
+CHD | Asia
+GIH | American
+JPT | Asia
+LWK | Africa
+MXL | American
+MKK | Africa
+TSI | Europe
+YRI | Africa 
+
+```{r continent}
+pca.eigenvec$continent[(pca.eigenvec$database == "CEU" | pca.eigenvec$database == "TSI")] <- "Europe"
+
+pca.eigenvec$continent[(pca.eigenvec$database == "ASW" | pca.eigenvec$database == "LWK" |
+                        pca.eigenvec$database == "MKK" | pca.eigenvec$database == "YRI")] <- "Africa"
+
+pca.eigenvec$continent[(pca.eigenvec$database == "CHB" | pca.eigenvec$database == "CHD" |
+                        pca.eigenvec$database == "JPT")]                                  <- "Asia"
+
+pca.eigenvec$continent[(pca.eigenvec$database == "GIH" | pca.eigenvec$database == "MEX")] <- "America"
+```
+
+If we look at scatter plots with the continent variable
+
+```{r continent plots}
+plotcont <- function(dat, x1, y1)
+{
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "continent")) +
+            geom_point(alpha = 0.3, size = 2) + theme_pubr()
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC1", "PC2")
+p2 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC3", "PC4")
+p3 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC5", "PC6")
+p4 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC7", "PC8")
+p5 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC9", "PC10")
+p6 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
+```
+
+I'll divide the HapMap samples into train and test samples with a 80/20 model to assess the accuracy of our classification.
+
+```{r SVM clustering}
+library(caret)
+set.seed(10)
+train <- pca.eigenvec %>% filter(database != "ADAPT")
+test  <- pca.eigenvec %>% filter(database == "ADAPT") 
+
+# 5-fold repeated cross-validation
+fitControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+svm.fit    <- train(continent ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRadial', 
+                     trControl = fitControl, data = train)
+
+test$continent <- predict(svm.fit, test)
+summary(test$continent)
+```
+
+Scatter plots of the predicted continent groups 
+
+```{r prediceted plots}
+p1 <- plotcont(test, "PC1", "PC2")
+p2 <- plotcont(test, "PC3", "PC4")
+p3 <- plotcont(test, "PC5", "PC6")
+p4 <- plotcont(test, "PC7", "PC8")
+p5 <- plotcont(test, "PC9", "PC10")
+p6 <- plotcont(test, "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
+```
+
+The next step will be to create a clustering of suthern versus northern european populations, using CEU and TSI as training sets. We'll double check our clustering with the samples that we have population information (Irish, Polish, Italian, and Portuguese).
+
+```{r cluster europe}
+pca.eigenvec$Eur[pca.eigenvec$database == "CEU"] <- "NEruope"
+pca.eigenvec$Eur[pca.eigenvec$database == "TSI"] <- "SEruope"
+
+set.seed(10)
+train.eur <- pca.eigenvec %>% filter(database == "CEU" | database == "TSI")
+test.eur  <- filter(test, continent == "Europe")
+
+# 5-fold repeated cross-validation
+fitControl  <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+svm.fit.eur <- train(Eur ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRadial', 
+                     trControl = fitControl, data = train.eur)
+
+test.eur$continent <- predict(svm.fit.eur, test.eur)
+summary(test.eur$continent)
+```
+
+```{r Eur predicted plots}
+p1 <- plotcont(test.eur, "PC1", "PC2")
+p2 <- plotcont(test.eur, "PC3", "PC4")
+p3 <- plotcont(test.eur, "PC5", "PC6")
+p4 <- plotcont(test.eur, "PC7", "PC8")
+p5 <- plotcont(test.eur, "PC9", "PC10")
+p6 <- plotcont(test.eur, "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
+```
+
 
 ```{r clustering}
 d  <- dist(as.matrix(pca.eigenvec[,3:32]))
