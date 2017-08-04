@@ -13,6 +13,7 @@ Calling libraries
 library(ggplot2)
 library(dplyr)
 library(GGally)
+library(ggpubr)
 ```
 
 Reading data
@@ -45,18 +46,45 @@ pca.eigenvec$database[!(pca.eigenvec$FID == "ASW" | pca.eigenvec$FID == "CEU" | 
 ```
 
 Because plink output is a normalized PC, clustering did not achieved very good results. 
-Now we de-normalized the PCA by multiplying by the standar deviation.
+Now we de-normalized the PCA by multiplying de eigenvectors by the standard deviation.
 
 ```{r de-normalizing PCA}
 pca.eigenvec[,3:32] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:32])))
 ```
+
+I'll remove samples that contain the word genome (surely those are not in the face files), the word ver (those are controls from the are from the axiom arrays), the word gDNA, as well as those with the name A_103. I've seen that some of those are outliers in some PCs
+
+```{r removing samples}
+removed <- filter(pca.eigenvec, IID == "A_103" | grepl("^genome", IID) | 
+                    grepl("^ver", IID) | grepl("^gDNA", IID)) %>% 
+               select(contains("ID"))
+removed
+pca.eigenvec <- filter(pca.eigenvec, IID != "A_103" & !grepl("^genome", IID) & 
+                         !grepl("^ver", IID) & !grepl("^gDNA", IID))
+```
+I removed `r nrow(removed)` samples.
+
+We also have some outliers in PC5, and PC10. Probably there are also in some other lower PCs
+
+```{r removing outliers, fig.height=4, fig.width=6}
+p1 <- ggplot(pca.eigenvec, aes(PC5)) + geom_histogram()
+p2 <- ggplot(pca.eigenvec, aes(PC10)) + geom_histogram()
+ggarrange(p1, p2)
+
+pca.eigenvec %>% filter(PC5 > 1) %>% select(contains("ID"))
+pca.eigenvec %>% filter(PC10 < -0.5) %>% select(contains("ID"))
+  
+pca.eigenvec <- pca.eigenvec %>% filter(PC5 < 1 & PC10 > -0.5)
+
+```
+
 
 # Descriptive and exploratory analyses
 
 Some summary stats
 
 ```{r summary}
-summary(pca.eigenvec[,c(1,2,33,34)])
+summary(pca.eigenvec[,c(1,2,33)])
 ```
  
 PCA screeplot
@@ -69,18 +97,117 @@ barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames,
        col = "steelblue")
 ```
 
-Correlogram between first 10 PCs
+Looking at the HapMap populations: 
 
-```{r correlogram}
-ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "blank", diag = NULL)
+POP | Description 
+----|------------
+ASW | African ancestry in Southwest USA
+CEU | Utah residents with Northern and Western European ancestry from the CEPH collection
+CHB | Han Chinese in Beijing, China
+CHD | Chinese in Metropolitan Denver, Colorado
+GIH | Gujarati Indians in Houston, Texas
+JPT | Japanese in Tokyo, Japan
+LWK | Luhya in Webuye, Kenya
+MXL | Mexican ancestry in Los Angeles, California
+MKK | Maasai in Kinyawa, Kenya
+TSI | Toscani in Italia
+YRI | Yoruba in Ibadan, Nigeria 
+
+```{r hapmap, echo=F}
+plothap <- function(dat, x1, y1)
+{
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "database")) +
+            geom_point(alpha = 0.2) + theme_pubr()
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC1", "PC2")
+p2 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC3", "PC4")
+p3 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC5", "PC6")
+p4 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC7", "PC8")
+p5 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC9", "PC10")
+p6 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "right")
 ```
 
-There are evident outliers in our sample (look PC7).
+```{r hapmap center, echo=F}
+meanshap <- filter(pca.eigenvec, database != "ADAPT") %>% group_by(database) %>% 
+                select(contains("PC")) %>% summarise_all(funs(mean))
 
-```{r removing out}
-pca.eigenvec$IID[pca.eigenvec$PC7 < -2]
-pca.eigenvec <- filter(pca.eigenvec, PC7 > -2)
-ggpairs(pca.eigenvec, mapping = aes(color = database), columns = 3:12, upper = "blank", diag = NULL)
+plothapmeans <- function(dat, x1, y1){
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, label = "database")) + 
+          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.5) + 
+          theme_pubr(legend = "none")
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plothapmeans(meanshap, "PC1", "PC2")
+p2 <- plothapmeans(meanshap, "PC3", "PC4")
+p3 <- plothapmeans(meanshap, "PC5", "PC6")
+p4 <- plothapmeans(meanshap, "PC7", "PC8")
+p5 <- plothapmeans(meanshap, "PC9", "PC10")
+p6 <- plothapmeans(meanshap, "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6,
+          nrow = 3, ncol = 2)
+```
+
+If we plot our samples together with the HapMap, we see the following
+
+```{r hapmap plus adapt, echo=F}
+plothapsamp <- function(dat1, dat2, x1, y1)
+{
+  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
+          geom_point(data = dat2, 
+                     aes_string(x = x1, y = y1), alpha = 0.4) + 
+          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.4) + 
+          theme_pubr(legend = "none")
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+  
+p1 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC1", "PC2")
+p2 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC3", "PC4")
+p3 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC5", "PC6")
+p4 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC7", "PC8")
+p5 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC9", "PC10")
+p6 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6,
+          nrow = 3, ncol = 2)
+```
+
+Looking at our samples with population designation
+```{r samples w/pop, echo=F}
+plothapgroup <- function(dat1, dat2, x1, y1)
+{
+  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
+          geom_point(data = dat2, aes_string(x = x1, y = y1, color = "FID"), alpha = 0.5) + 
+          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.5) +
+          theme_pubr()
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+eurhap  <- filter(meanshap, database == "CEU" | database == "TSI")
+eursamp <- filter(pca.eigenvec, FID == "Italian" | FID == "Polish" | FID == "Irish" | 
+                            FID == "Portuguese")
+
+p1 <- plothapgroup(eurhap, eursamp, "PC1", "PC2")
+p2 <- plothapgroup(eurhap, eursamp, "PC3", "PC4")
+p3 <- plothapgroup(eurhap, eursamp, "PC5", "PC6")
+p4 <- plothapgroup(eurhap, eursamp, "PC7", "PC8")
+p5 <- plothapgroup(eurhap, eursamp, "PC9", "PC10")
+p6 <- plothapgroup(eurhap, eursamp, "PC11", "PC12")
+
+
+ggarrange(p1, p2, p3, p4, p5, p6,
+          nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "right")
 ```
 
 # Clustering
@@ -108,7 +235,7 @@ getwd()
 coeffs   <- read.csv("coeffs.csv")
 ```
 
-```{r merging}
+```{r merging, eval=F}
 colnames(coeffs)[1] <- "IID"
 total      <- merge(pca.eigenvec, coeffs, by = "IID") 
 FacePCA    <- total[,39:125]
@@ -128,4 +255,3 @@ path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
 save(MergedDat, file = "MergedDat.RData")
 ```
-
