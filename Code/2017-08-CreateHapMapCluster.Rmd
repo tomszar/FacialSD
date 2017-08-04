@@ -1,0 +1,44 @@
+---
+output: 
+  html_document: default
+---
+
+This script will create a cluster of HapMap samples to use for a PCA, because we'll use only HapMap individuals to create the PCA, and then project everyone else. 
+
+**Important:** check if hapmap samples contain only unrelated individuals. According to the file, they do, but double check
+
+# Preliminares
+
+Loading the libraries
+
+```{r libraries}
+library(dplyr)
+```
+
+Loading the database
+
+```{r datasets}
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/DataBases/Genotypes", sep = ""))
+famfile <- read.table("160603_UnionGenos_hg19hg38_IDSexParentsUpdated.fam", sep = "", header = F)
+```
+
+Filtering HapMap samples
+
+```{r filtering}
+famfile <- famfile %>% filter(V1 == "ASW" | V1 == "CEU" | V1 == "CHB" | V1 == "CHD" | V1 == "GIH" |
+                              V1 == "JPT" | V1 == "LWK" | V1 == "MEX" | V1 == "MKK" | V1 == "TSI" |
+                              V1 == "YRI")
+famfile <- droplevels(famfile)
+```
+ 
+Creating a new file to export with one cluster per line
+ 
+```{r new dataset}
+newdat <- cbind("HAPM" , t(paste(famfile$V1, famfile$V2, sep="_")))
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Databases/Genotypes", sep = ""))
+write.table(cbind(famfile[,1:2], famfile[,1]), file="HapCluster.txt", quote = F, row.names = F, col.names = F)
+```
