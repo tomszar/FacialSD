@@ -261,17 +261,15 @@ p1 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC1", "PC2")
 p2 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC3", "PC4")
 p3 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC5", "PC6")
 p4 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC7", "PC8")
-p5 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC9", "PC10")
-p6 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC11", "PC12")
 
-ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
           common.legend = TRUE, legend = "right", 
           align = "v")
 ```
 
-I'll divide the HapMap samples into train and test samples with a 80/20 model to assess the accuracy of our classification.
+I'll use the HapMap samples as training, with a 5-fold cross-validation, and predict the values of our samples.
 
-```{r SVM clustering}
+```{r SVM clustering continent}
 library(caret)
 set.seed(10)
 train <- pca.eigenvec %>% filter(database != "ADAPT")
@@ -282,6 +280,7 @@ fitControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 svm.fit    <- train(continent ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRadial', 
                      trControl = fitControl, data = train)
 
+svm.fit
 test$continent <- predict(svm.fit, test)
 summary(test$continent)
 ```
@@ -293,17 +292,15 @@ p1 <- plotcont(test, "PC1", "PC2")
 p2 <- plotcont(test, "PC3", "PC4")
 p3 <- plotcont(test, "PC5", "PC6")
 p4 <- plotcont(test, "PC7", "PC8")
-p5 <- plotcont(test, "PC9", "PC10")
-p6 <- plotcont(test, "PC11", "PC12")
 
-ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
           common.legend = TRUE, legend = "right", 
           align = "v")
 ```
 
 The next step will be to create a clustering of suthern versus northern european populations, using CEU and TSI as training sets. We'll double check our clustering with the samples that we have population information (Irish, Polish, Italian, and Portuguese).
 
-```{r cluster europe}
+```{r svm cluster europe}
 pca.eigenvec$Eur[pca.eigenvec$database == "CEU"] <- "NEruope"
 pca.eigenvec$Eur[pca.eigenvec$database == "TSI"] <- "SEruope"
 
@@ -315,7 +312,7 @@ test.eur  <- filter(test, continent == "Europe")
 fitControl  <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 svm.fit.eur <- train(Eur ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRadial', 
                      trControl = fitControl, data = train.eur)
-
+svm.fit.eur
 test.eur$continent <- predict(svm.fit.eur, test.eur)
 summary(test.eur$continent)
 ```
@@ -325,25 +322,17 @@ p1 <- plotcont(test.eur, "PC1", "PC2")
 p2 <- plotcont(test.eur, "PC3", "PC4")
 p3 <- plotcont(test.eur, "PC5", "PC6")
 p4 <- plotcont(test.eur, "PC7", "PC8")
-p5 <- plotcont(test.eur, "PC9", "PC10")
-p6 <- plotcont(test.eur, "PC11", "PC12")
 
-ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
           common.legend = TRUE, legend = "right", 
           align = "v")
 ```
 
-
-```{r clustering}
-d  <- dist(as.matrix(pca.eigenvec[,3:32]))
-hc <- hclust(d)
-plot(hc)
-pca.eigenvec$groups <- as.factor(cutree(hc, k=5)) # cut tree into 5 clusters
-# draw dendogram with red borders around the 5 clusters
-ggpairs(pca.eigenvec, mapping = aes(color = groups), columns = 3:12, upper = "blank", diag = NULL)
-ggpairs(filter(pca.eigenvec, database != "ADAPT"), mapping = aes(color = groups), columns = 3:12, upper = "blank", diag = NULL)
-ggpairs(filter(pca.eigenvec, database == "ADAPT"), mapping = aes(color = groups), columns = 3:12, upper = "blank", diag = NULL)
-
+```{r merging predictions}
+levels(test$continent) <- c("Africa", "America", "Asia", "Europe", "NEruope", "SEruope")
+test[test$continent == 'Europe', 54] <- test.eur$continent
+test$Eur <- NULL
+test <- droplevels(test)
 ```
 
 # Combining datasets
@@ -357,17 +346,17 @@ getwd()
 coeffs   <- read.csv("coeffs.csv")
 ```
 
-```{r merging, eval=F}
+```{r merging}
 colnames(coeffs)[1] <- "IID"
-total      <- merge(pca.eigenvec, coeffs, by = "IID") 
-FacePCA    <- total[,39:125]
-GenPCA     <- total[,3:32]
-Covariates <- total[,c(1,2,34:38)]
+total      <- merge(test, coeffs, by = "IID") 
+FacePCA    <- total[,59:145]
+GenPCA     <- total[,3:52]
+Covariates <- total[,c(1,2,55:58,54)]
 
 PCnames <- sprintf("PC%s",seq(1:87))
 colnames(FacePCA) <- PCnames
 
-PCnames <- sprintf("PC%s",seq(1:30))
+PCnames <- sprintf("PC%s",seq(1:50))
 colnames(GenPCA) <- PCnames
 
 MergedDat <- list(Covariates, FacePCA, GenPCA) 
