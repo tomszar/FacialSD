@@ -1,6 +1,8 @@
 ---
 output: 
-  html_document: default
+  html_document:
+    fig_height: 10
+    fig_width: 10
 ---
 
 # Preliminaries
@@ -10,7 +12,7 @@ Loading libraries
 ```{r libraries}
 library(ggplot2)
 library(dplyr)
-library(gridExtra)
+library(ggpubr)
 ```
 
 Loading databases
@@ -43,21 +45,93 @@ MergedDat[[1]]$Sex <- droplevels(MergedDat[[1]]$Sex)
 summary(MergedDat[[1]])
 ```
 
+Scatter plot in Face PCA, with ancestry populations
+
 ```{r}
-ggplot(MergedDat[[2]], aes(x=PC1, y=PC2, color=MergedDat[[1]]$groups)) + geom_point()
-ggplot(MergedDat[[2]], aes(x=PC3, y=PC4, color=MergedDat[[1]]$groups)) + geom_point()
+plotpops <- function(dat, x1, y1, continent)
+{
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = continent)) +
+            geom_point(alpha = 0.3, size = 2) + theme_pubr() +
+            scale_color_discrete(name = "Continent")
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plotpops(MergedDat[[2]], "PC1", "PC2", MergedDat[[1]]$continent)
+p2 <- plotpops(MergedDat[[2]], "PC3", "PC4", MergedDat[[1]]$continent)
+p3 <- plotpops(MergedDat[[2]], "PC5", "PC6", MergedDat[[1]]$continent)
+p4 <- plotpops(MergedDat[[2]], "PC7", "PC8", MergedDat[[1]]$continent)
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
 ```
 
 ```{r}
 source("PlotPCs.R")
-p1 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC1", "PC9")
-p2 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC10", "PC19")
-p3 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC20", "PC29")
-p4 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$groups, "PC30", "PC39")
-grid.arrange(p1, p2, p3, p4)
+p1 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC1", "PC9")
+p2 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC10", "PC19")
+p3 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC20", "PC29")
+p4 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC30", "PC39")
+ggarrange(p1, p2, p3, p4,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
 ```
 
-```{r}
+```{r means plots}
+meanspop <- MergedDat[[2]] %>% group_by(MergedDat[[1]]$continent) %>% 
+                summarise_all(funs(mean))
+colnames(meanspop)[1] <- "continent"
+
+plotmeans <- function(dat1, dat2, x1, y1, continent)
+{
+  p1 <- ggplot(data = dat2, aes_string(x = x1, y = y1, color = continent)) + 
+          geom_point(alpha = 0.3) + 
+          geom_label(data = dat1, aes_string(x = x1, y = y1, label="continent", fill = "continent"), 
+                     colour = "white", fontface = "bold", alpha = 0.7) +
+          theme_pubr(legend = "none")
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plotmeans(meanspop, MergedDat[[2]],"PC1", "PC2", MergedDat[[1]]$continent)
+p2 <- plotmeans(meanspop, MergedDat[[2]],"PC3", "PC4", MergedDat[[1]]$continent)
+p3 <- plotmeans(meanspop, MergedDat[[2]],"PC5", "PC6", MergedDat[[1]]$continent)
+p4 <- plotmeans(meanspop, MergedDat[[2]],"PC7", "PC8", MergedDat[[1]]$continent)
+p5 <- plotmeans(meanspop, MergedDat[[2]],"PC9", "PC10", MergedDat[[1]]$continent)
+p6 <- plotmeans(meanspop, MergedDat[[2]],"PC11", "PC12", MergedDat[[1]]$continent)
+
+ggarrange(p1, p2, p3, p4, p5, p6,
+          nrow = 3, ncol = 2, 
+          align = "v")
+```
+
+```{r plot ellipses}
+plotellip <- function(dat1, x1, y1, continent)
+{
+  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, color = continent)) + 
+          geom_point(alpha = 0.3) + 
+          stat_ellipse() +
+          theme_pubr(legend = "none")
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plotellip(MergedDat[[2]], "PC1", "PC2", MergedDat[[1]]$continent)
+p2 <- plotellip(MergedDat[[2]], "PC3", "PC4", MergedDat[[1]]$continent)
+p3 <- plotellip(MergedDat[[2]], "PC5", "PC6", MergedDat[[1]]$continent)
+p4 <- plotellip(MergedDat[[2]], "PC7", "PC8", MergedDat[[1]]$continent)
+p5 <- plotellip(MergedDat[[2]], "PC9", "PC10", MergedDat[[1]]$continent)
+p6 <- plotellip(MergedDat[[2]], "PC11", "PC12", MergedDat[[1]]$continent)
+
+ggarrange(p1, p2, p3, p4, p5, p6,
+          nrow = 3, ncol = 2, 
+          align = "v")
+
+
+```
+
+
+```{r eval=F}
 noeur <- !(MergedDat[[1]]$groups == "2")
 
 Males1   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "1" &  MergedDat[[1]]$Sex == "Male") )
@@ -110,6 +184,6 @@ p4 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC7, PC8, colour=filter(MergedDa
   geom_point(data = consensus[9:10,], aes(PC7, PC8), color="pink", size=3) +
   theme(legend.position="none")
              
-grid.arrange(p1, p2, p3, p4, ncol=2)
+#grid.arrange(p1, p2, p3, p4, ncol=2)
 ```
 
