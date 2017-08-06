@@ -24,7 +24,7 @@ PlotPCs <- function(dataset, group, minPC, maxPC)
   toval   <- mean(longdb$value[fromPC:toPC]) + 2*sd(longdb$value[fromPC:toPC])
 
   p1 <- ggplot(longdb[fromPC:toPC , ], aes(y = PC )) + 
-        geom_joy(aes(x = value, fill = group), alpha = .6, color = "white", from = fromval, to = toval) +
+        geom_joy(aes(x = value, fill = group), alpha = .2, color = "white", from = fromval, to = toval) +
         theme_joy(grid = FALSE)
   
   return(p1)
