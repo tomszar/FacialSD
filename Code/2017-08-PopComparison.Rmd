@@ -43,147 +43,134 @@ MergedDat[[1]]$Sex <- droplevels(MergedDat[[1]]$Sex)
 
 ```{r summary}
 summary(MergedDat[[1]])
+MergedDat[[1]] %>% group_by(continent) %>% select(Age, Height, Weight) %>% 
+  summarise_all(funs(mean(. , na.rm = T), median(. , na.rm = T), sd(. , na.rm = T)))
 ```
 
-Scatter plot in Face PCA, with ancestry populations
+We can compare at the distributions of PCs for each geographical group
 
-```{r}
-plotpops <- function(dat, x1, y1, continent)
-{
-  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = continent)) +
-            geom_point(alpha = 0.3, size = 2) + theme_pubr() +
-            scale_color_discrete(name = "Continent")
-  p1 <- ggpar(p1, palette = "jama")
-  return(p1)
-}
-
-p1 <- plotpops(MergedDat[[2]], "PC1", "PC2", MergedDat[[1]]$continent)
-p2 <- plotpops(MergedDat[[2]], "PC3", "PC4", MergedDat[[1]]$continent)
-p3 <- plotpops(MergedDat[[2]], "PC5", "PC6", MergedDat[[1]]$continent)
-p4 <- plotpops(MergedDat[[2]], "PC7", "PC8", MergedDat[[1]]$continent)
-ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
+```{r joyplots}
+source("PlotPCs.R")
+p1 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC1", "PC9")
+p2 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC10", "PC19")
+p3 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC20", "PC29")
+p4 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC30", "PC39")
+ggarrange(p1, p2, p3, p4,
           common.legend = TRUE, legend = "right", 
           align = "v")
-```
 
-```{r}
-source("PlotPCs.R")
-p1 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC1", "PC9")
-p2 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC10", "PC19")
-p3 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC20", "PC29")
-p4 = PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC30", "PC39")
+p1 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC40", "PC49")
+p2 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC50", "PC59")
+p3 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC60", "PC69")
+p4 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC70", "PC79")
 ggarrange(p1, p2, p3, p4,
           common.legend = TRUE, legend = "right", 
           align = "v")
 ```
 
-```{r means plots}
-meanspop <- MergedDat[[2]] %>% group_by(MergedDat[[1]]$continent) %>% 
-                summarise_all(funs(mean))
-colnames(meanspop)[1] <- "continent"
+# Hypohtesis testing
 
-plotmeans <- function(dat1, dat2, x1, y1, continent)
-{
-  p1 <- ggplot(data = dat2, aes_string(x = x1, y = y1, color = continent)) + 
-          geom_point(alpha = 0.3) + 
-          geom_label(data = dat1, aes_string(x = x1, y = y1, label="continent", fill = "continent"), 
-                     colour = "white", fontface = "bold", alpha = 0.7) +
-          theme_pubr(legend = "none")
+We'll test whether group average differ between groups, by using a 5x2 design using continent and Sex as grouping variables
+
+```{r MANOVA}
+fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
+summary(fit, test="Hotelling-Lawley")
+summary(fit, test="Wilks")
+summary(fit, test="Roy")
+summary(fit, test="Pillai")
+```
+
+we can compute pairwise mahalanobis distance as a measure of effect size.
+
+```{r}
+library(HDMD)
+madist <- pairwise.mahalanobis(MergedDat[[2]], MergedDat[[1]]$continent)
+levels(MergedDat[[1]]$continent)
+madist$distance
+```
+
+# Vectors comparison
+
+Another approach is to calculate the sexual dimorphism vectors for each population, and compare them.
+
+```{r vector calculation}
+consensus <- MergedDat[[2]] %>% group_by(MergedDat[[1]]$continent, MergedDat[[1]]$Sex) %>%
+             summarise_all(funs(mean))
+colnames(consensus)[c(1,2)] <- c("continent", "Sex")
+consensus$groups <- paste(consensus$continent, consensus$Sex, sep = ".")
+
+plotsdmeans <- function(PCA, x1, y1) 
+{ 
+  p1 <- ggplot(PCA, aes_string(x = x1, y = y1)) + 
+            geom_point(alpha = 0.05) +
+            geom_point(data = consensus, 
+                       aes_string(
+                         x = x1, y = y1,
+                         color = "consensus$groups"), 
+                       size = 4) +
+            scale_color_discrete(name = "Groups") +
+            theme_pubr()
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
 }
 
-p1 <- plotmeans(meanspop, MergedDat[[2]],"PC1", "PC2", MergedDat[[1]]$continent)
-p2 <- plotmeans(meanspop, MergedDat[[2]],"PC3", "PC4", MergedDat[[1]]$continent)
-p3 <- plotmeans(meanspop, MergedDat[[2]],"PC5", "PC6", MergedDat[[1]]$continent)
-p4 <- plotmeans(meanspop, MergedDat[[2]],"PC7", "PC8", MergedDat[[1]]$continent)
-p5 <- plotmeans(meanspop, MergedDat[[2]],"PC9", "PC10", MergedDat[[1]]$continent)
-p6 <- plotmeans(meanspop, MergedDat[[2]],"PC11", "PC12", MergedDat[[1]]$continent)
-
-ggarrange(p1, p2, p3, p4, p5, p6,
-          nrow = 3, ncol = 2, 
+p1 <- plotsdmeans(MergedDat[[2]], "PC1", "PC2")
+p2 <- plotsdmeans(MergedDat[[2]], "PC3", "PC4")
+p3 <- plotsdmeans(MergedDat[[2]], "PC5", "PC6")
+p4 <- plotsdmeans(MergedDat[[2]], "PC7", "PC8")
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
+          common.legend = TRUE, legend = "top", 
           align = "v")
 ```
 
-```{r plot ellipses}
-plotellip <- function(dat1, x1, y1, continent)
+We can compare the vector of total SD between populations
+
+```{r vector comparison}
+totalSD <- matrix(0, ncol = 88, nrow = 5)
+totalSD <- data.frame(totalSD)
+totalSD[,1] <- levels(consensus$continent)
+colnames(totalSD) <- c("continent", colnames(MergedDat[[2]]))
+
+row <- 1
+for(i in seq(1, 10, 2)){
+  totalSD[row, 2:88] <- consensus[i, 3:89] - consensus[i+1, 3:89] 
+  row = row + 1
+}
+
+plotvect <- function(PCA, x1, y1)
 {
-  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, color = continent)) + 
-          geom_point(alpha = 0.3) + 
-          stat_ellipse() +
-          theme_pubr(legend = "none")
+  p1 <- ggplot(PCA, aes_string(x = x1, y = y1)) +
+            geom_point(alpha = 0.05) + 
+            geom_segment(data = totalSD, 
+                         aes_string(x = 0, y = 0,
+                                    xend = paste("totalSD$", x1, "*3", sep = ""), 
+                                    yend = paste("totalSD$", y1, "*3", sep = ""),
+                                    color = "totalSD$continent"), 
+                 arrow = arrow(length = unit(0.03, "npc")), size = 1) +
+            scale_color_discrete(name = "Continent") + 
+            theme_pubr()
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
 }
 
-p1 <- plotellip(MergedDat[[2]], "PC1", "PC2", MergedDat[[1]]$continent)
-p2 <- plotellip(MergedDat[[2]], "PC3", "PC4", MergedDat[[1]]$continent)
-p3 <- plotellip(MergedDat[[2]], "PC5", "PC6", MergedDat[[1]]$continent)
-p4 <- plotellip(MergedDat[[2]], "PC7", "PC8", MergedDat[[1]]$continent)
-p5 <- plotellip(MergedDat[[2]], "PC9", "PC10", MergedDat[[1]]$continent)
-p6 <- plotellip(MergedDat[[2]], "PC11", "PC12", MergedDat[[1]]$continent)
-
-ggarrange(p1, p2, p3, p4, p5, p6,
-          nrow = 3, ncol = 2, 
+p1 <- plotvect(MergedDat[[2]], "PC1", "PC2")
+p2 <- plotvect(MergedDat[[2]], "PC3", "PC4")
+p3 <- plotvect(MergedDat[[2]], "PC5", "PC6")
+p4 <- plotvect(MergedDat[[2]], "PC7", "PC8")
+p5 <- plotvect(MergedDat[[2]], "PC9", "PC10")
+p6 <- plotvect(MergedDat[[2]], "PC11", "PC12")
+ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "top", 
           align = "v")
-
-
 ```
 
+Angles between total SD vectors
 
-```{r eval=F}
-noeur <- !(MergedDat[[1]]$groups == "2")
-
-Males1   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "1" &  MergedDat[[1]]$Sex == "Male") )
-Females1 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "1" &  MergedDat[[1]]$Sex == "Female") )
-Males2   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "2" &  MergedDat[[1]]$Sex == "Male") )
-Females2 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "2" &  MergedDat[[1]]$Sex == "Female") )
-Males3   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "3" &  MergedDat[[1]]$Sex == "Male") )
-Females3 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "3" &  MergedDat[[1]]$Sex == "Female") )
-Males4   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "4" &  MergedDat[[1]]$Sex == "Male") )
-Females4 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "4" &  MergedDat[[1]]$Sex == "Female") )
-Males5   <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "5" &  MergedDat[[1]]$Sex == "Male") )
-Females5 <- colMeans(filter(MergedDat[[2]], MergedDat[[1]]$groups == "5" &  MergedDat[[1]]$Sex == "Female") )
-
-consensus <- as.data.frame(t(data.frame(Males1, Females1, Males2, Females2, Males3, Females3, Males4, Females4, Males5, Females5)))
-remove(Males1, Females1, Males2, Females2, Males3, Females3, Males4, Females4, Males5, Females5)
-
-p1 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC1, PC2, colour=filter(MergedDat[[1]], noeur)$groups )) + 
-  geom_point(alpha=0.1) + 
-  geom_point(data = consensus[1:2,], aes(PC1, PC2), color="red", size=3) + 
-  geom_point(data = consensus[3:4,], aes(PC1, PC2), color="blue", size=3) +
-  geom_point(data = consensus[5:6,], aes(PC1, PC2), color="green", size=3) +
-  geom_point(data = consensus[7:8,], aes(PC1, PC2), color="yellow", size=3) + 
-  geom_point(data = consensus[9:10,], aes(PC1, PC2), color="pink", size=3) +
-  theme(legend.position="none") 
-
-p2 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC3, PC4, colour=filter(MergedDat[[1]], noeur)$groups)) + 
-  geom_point(alpha=0.1) + 
-    geom_point(data = consensus[1:2,], aes(PC3, PC4), color="red", size=3) + 
-  geom_point(data = consensus[3:4,], aes(PC3, PC4), color="blue", size=3) +
-  geom_point(data = consensus[5:6,], aes(PC3, PC4), color="green", size=3) +
-  geom_point(data = consensus[7:8,], aes(PC3, PC4), color="yellow", size=3) + 
-  geom_point(data = consensus[9:10,], aes(PC3, PC4), color="pink", size=3) +
-  theme(legend.position="none") 
-          
-p3 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC5, PC6, colour=filter(MergedDat[[1]], noeur)$groups)) + 
-  geom_point(alpha=0.1) + 
-  geom_point(data = consensus[1:2,], aes(PC5, PC6), color="red", size=3) + 
-  geom_point(data = consensus[3:4,], aes(PC5, PC6), color="blue", size=3) +
-  geom_point(data = consensus[5:6,], aes(PC5, PC6), color="green", size=3) +
-  geom_point(data = consensus[7:8,], aes(PC5, PC6), color="yellow", size=3) + 
-  geom_point(data = consensus[9:10,], aes(PC5, PC6), color="pink", size=3) +
-  theme(legend.position="none")
-             
-p4 <- ggplot(filter(MergedDat[[2]], noeur), aes(PC7, PC8, colour=filter(MergedDat[[1]], noeur)$groups)) + 
-  geom_point(alpha=0.1) + 
-  geom_point(data = consensus[1:2,], aes(PC7, PC8), color="red", size=3) + 
-  geom_point(data = consensus[3:4,], aes(PC7, PC8), color="blue", size=3) +
-  geom_point(data = consensus[5:6,], aes(PC7, PC8), color="green", size=3) +
-  geom_point(data = consensus[7:8,], aes(PC7, PC8), color="yellow", size=3) + 
-  geom_point(data = consensus[9:10,], aes(PC7, PC8), color="pink", size=3) +
-  theme(legend.position="none")
-             
-#grid.arrange(p1, p2, p3, p4, ncol=2)
+```{r}
+source("Distances.R")
+ang <- getAngle(totalSD[1,2:88], totalSD[1,2:88])
+ang
+ma <- getPAngle(totalSD[,2:88])
+ma
 ```
 
