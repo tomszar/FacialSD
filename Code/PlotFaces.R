@@ -4,6 +4,7 @@ Plot2Faces <- function(face1, face2, facets, title = NULL )
   # The input needs to be two vectors with x,y.z consecutive coordinates
   # and the faces as a matrix
   
+  require(plotly)
   rface1 <- matrix(face1, ncol=3, byrow=T)
   rface2 <- matrix(face2, ncol=3, byrow=T)
   
@@ -46,6 +47,7 @@ Plot1Face <- function(face1, facets, colormap=NULL, title=NULL)
   # Plots one face, with the corresponding facets
   # If colormap is defined, it will be plotted
   require(grDevices)
+  require(plotly)
   rface1 <- matrix(face1, ncol=3, byrow=T)
   
   ax <- list(
