@@ -5,6 +5,12 @@ output:
     fig_width: 10
 ---
 
+In this script we'll look at the difference in patterns of facial sexual dimorphism between the populations previously defined. 
+We'll use multivariate statistics to estimate group differences in the face PCA. 
+Also, we'll estimate the vectors of FSD, as well as the allometric and non-allometric components between populations. 
+To do that, we'll compare the magnitude between vectors (degree of facial sexual dimorphism), and the direction (pattern of facial sexual dimorphism). 
+
+
 # Preliminaries
 
 Loading libraries
@@ -27,7 +33,8 @@ load("MergedDat.RData")
 
 # Data cleaning
 
-I'll remove participants without Male or Female self-identified sex
+I'll remove participants without Male or Female self-identified sex.
+You can see the IID of the participants removed.
 
 ```{r data cleaning}
 MergedDat[[1]]$IID[!(MergedDat[[1]]$Sex == "Male" | MergedDat[[1]]$Sex == "Female")]
@@ -43,11 +50,11 @@ MergedDat[[1]]$Sex <- droplevels(MergedDat[[1]]$Sex)
 
 ```{r summary}
 summary(MergedDat[[1]])
-MergedDat[[1]] %>% group_by(continent) %>% select(Age, Height, Weight) %>% 
+MergedDat[[1]] %>% group_by(continent, Sex) %>% select(Age, Height, Weight) %>% 
   summarise_all(funs(mean(. , na.rm = T), median(. , na.rm = T), sd(. , na.rm = T)))
 ```
 
-We can compare at the distributions of PCs for each geographical group
+We can compare the distributions of PCs for each geographical group
 
 ```{r joyplots}
 source("PlotPCs.R")
@@ -70,7 +77,8 @@ ggarrange(p1, p2, p3, p4,
 
 # Hypohtesis testing
 
-We'll test whether group average differ between groups, by using a 5x2 design using continent and Sex as grouping variables
+We'll test whether group averages differ between groups, by using a 5x2 design using continent and Sex as grouping variables.
+As shown, both continet and Sex (and their interaction) are significant predictors of face shape.
 
 ```{r MANOVA}
 fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
@@ -80,18 +88,26 @@ summary(fit, test="Roy")
 summary(fit, test="Pillai")
 ```
 
-we can compute pairwise mahalanobis distance as a measure of effect size.
+we can also compute pairwise mahalanobis distance as a measure of effect size.
+As seen in the dendogram, African and Asian faces cluster together, while American and European females, and American and European males form another cluster. 
+Interestingly, American and European females cluster closer to the African branch.
+
 
 ```{r}
 library(HDMD)
-madist <- pairwise.mahalanobis(MergedDat[[2]], MergedDat[[1]]$continent)
-levels(MergedDat[[1]]$continent)
+madist <- pairwise.mahalanobis(MergedDat[[2]], interaction(MergedDat[[1]]$continent, MergedDat[[1]]$Sex))
+levels(interaction(MergedDat[[1]]$continent, MergedDat[[1]]$Sex))
 madist$distance
+plot(hclust(as.dist(madist$distance)))
 ```
 
 # Vectors comparison
 
 Another approach is to calculate the sexual dimorphism vectors for each population, and compare them.
+We can compare the magnitude and angle between vectors to assess the degree and pattern of facial sexual dimorphism respectively.
+First, let's look at the position of each consensus face (continent x Sex).
+As seen in the first four PCs, Asian faces seem more divergent in the face space, corroborating the dendogram results.
+Also, looking at the male-female pairs, we see a similar direction in the first two PCs, while lower PCs seem to diverge more.
 
 ```{r vector calculation}
 consensus <- MergedDat[[2]] %>% group_by(MergedDat[[1]]$continent, MergedDat[[1]]$Sex) %>%
@@ -123,9 +139,13 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
           align = "v")
 ```
 
-We can compare the vector of total SD between populations
+We can obtain the vector of total sexual dimorphism by substracting the female to the male consensus face.
+To obtain the allometric component, we run a multivariate linear regression of face shape against Sex, Height, and continent. 
+Also, we can compute manova tables to estimate the effect of Sex, Height, and continent on face shape (face PCs).
+In this case, we'll also estimate the Height by continent interaction, so as to compare the vectors between continental groups, if not, they would have the same vector.
 
-```{r vector comparison}
+```{r SD decomposition}
+#TOTAL SD
 totalSD <- matrix(0, ncol = 88, nrow = 5)
 totalSD <- data.frame(totalSD)
 totalSD[,1] <- levels(consensus$continent)
@@ -137,6 +157,24 @@ for(i in seq(1, 10, 2)){
   row = row + 1
 }
 
+#ALLOMETRIC SD
+fit <- lm(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex + MergedDat[[1]]$Height * MergedDat[[1]]$continent)
+summary(manova(fit), test="Hotelling-Lawley")
+coef(fit)
+alloSD <- totalSD
+alloSD[2,2:88] <- (coef(fit)[3,] + coef(fit)[8,]) * (mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Female',5],na.rm = T) -
+                                                       mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Male',5], na.rm = T))
+alloSD[3,2:88] <- (coef(fit)[3,] + coef(fit)[9,]) * (mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Female',5],na.rm = T) -
+                                                       mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Male',5], na.rm = T))
+alloSD[4,2:88] <- (coef(fit)[3,] + coef(fit)[10,]) * (mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Female',5],na.rm = T) -
+                                                       mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Male',5], na.rm = T))
+alloSD[5,2:88] <- (coef(fit)[3,] + coef(fit)[11,]) * (mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Female',5],na.rm = T) -
+                                                       mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Male',5], na.rm = T))
+alloSD[1,2:88] <- (coef(fit)[3,]) *   (mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Female',5],na.rm = T) -
+                                                       mean(MergedDat[[1]][MergedDat[[1]]$Sex == 'Male',5], na.rm = T))
+```
+
+```{r vector plots}
 plotvect <- function(PCA, x1, y1)
 {
   p1 <- ggplot(PCA, aes_string(x = x1, y = y1)) +
@@ -164,13 +202,31 @@ ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
           align = "v")
 ```
 
+```{r allo vector plots}
+p1 <- ggplot(MergedDat[[2]], aes(PC1, PC2)) + geom_point(alpha=0.05) +
+    geom_segment(data = alloSD, aes(x = 0, y = 0, xend = PC1*5, yend = PC2*5, color =continent), 
+                 arrow = arrow(length = unit(0.03, "npc")), size = 1)
+
+p2 <- ggplot(MergedDat[[2]], aes(PC3, PC4)) + geom_point(alpha=0.05) +
+    geom_segment(data = alloSD, aes(x = 0, y = 0, xend = PC3*5, yend = PC4*5, color =continent), 
+                 arrow = arrow(length = unit(0.03, "npc")), size = 1)
+
+ggarrange(p1,p2, ncol=2, common.legend = T, legend = "bottom")
+```
+
+
 Angles between total SD vectors
 
 ```{r}
 source("Distances.R")
-ang <- getAngle(totalSD[1,2:88], totalSD[1,2:88])
-ang
+levels(consensus$continent)
 ma <- getPAngle(totalSD[,2:88])
 ma
+```
+
+Calculating the magnitude of each vector
+
+```{r}
+apply(totalSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))
 ```
 
