@@ -1,58 +1,55 @@
 ---
-output:
+title: Face effects
+output: 
   html_document: default
 ---
-# Preliminaries
 
-We will load the necessary libraries
+In this script we will look at some interactive plots showing the effect of sex on the face. 
+Because this is a preliminary assessment, the effect of sex is estimated using the whole sample (without taking their ancestries into account).
+This script is built from the [hypothesis testing](2017-07-HTesting.html) in which I created the vectors of sexual dimorphism.
+Remember to open the file in chrome.
 
-```{r libraries, warning=FALSE}
+## Preliminaries
+
+We will load the necessary libraries, and datasets
+
+```{r libraries, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
 library(plotly)
-```
-
-Setting wd and loading databases
-
-```{r databases}
+library(tidyr)
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/PCA", sep = ""))
-#Read data
 coeffs   <- read.csv("coeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 eigenval <- read.csv("eigenvalues.csv", header=F)
 means    <- read.csv("means.csv", header=F)
 facets   <- read.csv("facets.csv", header=F)
-```
-
-```{r databases2 }
-setwd('..')
-path <- getwd()
 setwd(paste(path, "/Results/FSD", sep = ""))
 load("fitmodel.RData")
 vectors <- read.csv("vectors.csv", row.names = 1)
 ```
 
-
 ## Data cleaning
 
-For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age)
+For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age).
 
 ```{r data cleaning}
-#Remove no sex participants
 coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
 coeffs = droplevels(coeffs)
-#Removed NAs from database
 coeffs = na.omit(coeffs)
 dim(coeffs)
+head(coeffs[,1:8])
 ```
 
 After cleaning, we end up with `r nrow(coeffs)` individuals
 
-# Face plots
+## Face plots
 
-Facial sexual dimorphism
+In this section we will see the interactive plots showing facial sexual dimorphism.
+To do that we need to transform the PCA vectors to the shape coordinates.
+Each vector (total, allometric and non-allometric) is multiplied by a constant to exaggerate the facial effects (in this case 2 and -2), multiplied by the matrix of eigenvectors, and then added the means for each landmark.
 
 ```{r fsd coordinates}
 fsdcoords <- data.frame(Tot.male = rep(0, nrow(means)), Tot.female = rep(0, nrow(means)), 
@@ -63,6 +60,9 @@ fsdcoords[,c(2,4,6)] <- apply(as.matrix(vectors[3:5,] * 2) %*% t(as.matrix(eigen
 averagecoords <- t(( colMeans(vectors[1:2,]) %*% t(as.matrix(eigenvec))) + t(means))
 ```
 
+The first set of plots show the overlaying of the two face shapes.
+In this case male faces are shown as turquoise, and females as wheat color.
+
 ```{r 3d fsd plots}
 source("PlotFaces.R")
 Plot2Faces(fsdcoords[ ,1], fsdcoords[,2], facets, "Total SD")
@@ -70,7 +70,7 @@ Plot2Faces(fsdcoords[ ,3], fsdcoords[,4], facets, "Allometric SD")
 Plot2Faces(fsdcoords[ ,5], fsdcoords[,6], facets, "Non allometric SD")
 ```
 
-```{r distances}
+```{r distance calculation}
 source("Distances.R")
 eucdist <- data.frame(Totdist = rep(0, nrow(means)), 
                       Allodist =  rep(0, nrow(means)), 
@@ -85,13 +85,15 @@ eucdist <- gather(eucdist, type, dist)
 eucdist$dist <- scales::rescale(eucdist$dist)
 ```
 
+In this other set of plots you can see the euclidean distance between the two morphs, as a colormap in the average face.
+At this point, the colormap is not scaled to be comparable across plost, and the legend does not show correctly the euclidean distances.
 
 ```{r distplots}
 source("PlotFaces.R")
-Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Totdist") %>% dplyr::select(dist))), 
-          title = "Total SD")
-Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Allodist") %>% dplyr::select(dist))), 
-          title = "Allometric SD")
-Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Nallodist") %>% dplyr::select(dist))), 
-          title = "Non allometric SD")
+Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Totdist") %>% 
+                                                          dplyr::select(dist))), title = "Total SD")
+Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Allodist") %>% 
+                                                          dplyr::select(dist))), title = "Allometric SD")
+Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Nallodist") %>% 
+                                                          dplyr::select(dist))), title = "Non allometric SD")
 ```
