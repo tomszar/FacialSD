@@ -1,44 +1,40 @@
 ---
+title: Genetic clustering
 output: 
   html_document:
-    fig_height: 12
+    fig_height: 10
     fig_width: 10
 ---
 
-In this script I'll analyze the genetic clustering done with plink. 
+In this script we will look at some descriptive statistics from the genetic PCA, previously done in Plink.
+The steps to create the genetic PCA were as following:
 
-# Preliminaries
+- Remove of missing genotype data.
+- LD pruning using a window size of 10kb and a VIF of 2.
+- Only HapMap samples were used to create the PCA, and our samples were projected there.
+- A total of 50 PCs were extracted
 
-Calling libraries
+## Preliminaries
 
-```{r libraries, warning=FALSE}
+Calling libraries and datasets
+
+```{r libraries datasets, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
 library(GGally)
 library(ggpubr)
-```
-
-Reading data
-
-```{r databases}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/GenClustering", sep = ""))
 pca.eigenval <- read.csv("Clus.eigenval", sep = "", header = F)
 pca.eigenvec <- read.csv("Clus.eigenvec", sep = "", header = F)
+PCnames      <- sprintf("PC%s",seq(1:50))
+colnames(pca.eigenvec) <- c("FID", "IID", PCnames)
 ```
 
 ## Data cleaning
 
-Naming data columns
-
-```{r naming cols}
-PCnames <- sprintf("PC%s",seq(1:50))
-colnames(pca.eigenvec) <- c("FID", "IID", PCnames)
-```
-
-
-Creating new column to plot hapmap pops against our samples.
+Creating a new column to plot hapmap pops against our samples more easily.
 
 ```{r new column}
 pca.eigenvec$database <- pca.eigenvec$FID 
@@ -47,28 +43,29 @@ pca.eigenvec$database[!(pca.eigenvec$FID == "ASW" | pca.eigenvec$FID == "CEU" | 
                           pca.eigenvec$FID == "MKK" | pca.eigenvec$FID == "TSI" | pca.eigenvec$FID == "YRI")] <- "ADAPT"
 ```
 
-Because plink output is a normalized PC, clustering did not achieved very good results. 
-Now we de-normalized the PCA by multiplying de eigenvectors by the standard deviation.
+Because plink output is a normalized PCA, we de-normalized the PCA by multiplying the eigenvectors by the standard deviation.
 
 ```{r de-normalizing PCA}
 pca.eigenvec[,3:52] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:52])))
 ```
 
-I'll remove samples that contain the word genome (surely those are not in the face files), the word ver (those are controls from the are from the axiom arrays), the word gDNA, as well as those with the name A_103. I've seen that some of those are outliers in some PCs
+I'll remove samples that contain the word genome (surely those are not in the face files), the word ver (those are controls from the axiom arrays), the word gDNA, as well as those with the name A_103. 
+I've also seen that some of those are outliers in some PCs
 
 ```{r removing samples}
 removed <- filter(pca.eigenvec, IID == "A_103" | grepl("^genome", IID) | 
                     grepl("^ver", IID) | grepl("^gDNA", IID)) %>% 
                select(contains("ID"))
-removed
+head(removed)
 pca.eigenvec <- filter(pca.eigenvec, IID != "A_103" & !grepl("^genome", IID) & 
                          !grepl("^ver", IID) & !grepl("^gDNA", IID))
 ```
-I removed `r nrow(removed)` samples.
 
-We also have some outliers in PC5, and PC10. Probably there are also in some other lower PCs
+I removed a total of `r nrow(removed)` samples.
+We also have some outliers in PC5, and PC10, clear from the plots of their distributions.
+Probably there are also in some other lower PCs.
 
-```{r removing outliers, fig.height=4, fig.width=10}
+```{r removing outliers, fig.height=4, fig.width=10, message=FALSE}
 p1 <- ggplot(pca.eigenvec, aes(PC5)) + geom_histogram()
 p2 <- ggplot(pca.eigenvec, aes(PC10)) + geom_histogram()
 ggarrange(p1, p2)
@@ -81,7 +78,7 @@ pca.eigenvec <- pca.eigenvec %>% filter(PC5 < 1 & PC10 > -0.5)
 ```
 
 
-# Descriptive and exploratory analyses
+## Descriptive and exploratory analyses
 
 Some summary stats
 
@@ -101,19 +98,19 @@ barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames,
 
 Looking at the HapMap populations: 
 
-POP | Description 
-----|------------
-ASW | African ancestry in Southwest USA
-CEU | Utah residents with Northern and Western European ancestry from the CEPH collection
-CHB | Han Chinese in Beijing, China
-CHD | Chinese in Metropolitan Denver, Colorado
-GIH | Gujarati Indians in Houston, Texas
-JPT | Japanese in Tokyo, Japan
-LWK | Luhya in Webuye, Kenya
-MXL | Mexican ancestry in Los Angeles, California
-MKK | Maasai in Kinyawa, Kenya
-TSI | Toscani in Italia
-YRI | Yoruba in Ibadan, Nigeria 
+|POP | Description                 
+|----|-----------------------------------------------------------------
+|ASW | African ancestry in Southwest USA
+|CEU | Utah residents with Northern and Western European ancestry from the CEPH collection
+|CHB | Han Chinese in Beijing, China
+|CHD | Chinese in Metropolitan Denver, Colorado
+|GIH | Gujarati Indians in Houston, Texas
+|JPT | Japanese in Tokyo, Japan
+|LWK | Luhya in Webuye, Kenya
+|MXL | Mexican ancestry in Los Angeles, California
+|MKK | Maasai in Kinyawa, Kenya
+|TSI | Toscani in Italia
+|YRI | Yoruba in Ibadan, Nigeria 
 
 ```{r hapmap}
 plothap <- function(dat, x1, y1)
@@ -136,33 +133,12 @@ ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
           align = "v")
 ```
 
-```{r hapmap center}
+We can plot our samples with the centroid of the HapMap pops indicated.
+
+```{r hapmap plus adapt}
 meanshap <- filter(pca.eigenvec, database != "ADAPT") %>% group_by(database) %>% 
                 select(contains("PC")) %>% summarise_all(funs(mean))
 
-plothapmeans <- function(dat, x1, y1){
-  p1 <- ggplot(dat, aes_string(x = x1, y = y1, label = "database")) + 
-          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.6) + 
-          theme_pubr(legend = "none")
-  p1 <- ggpar(p1, palette = "jama")
-  return(p1)
-}
-
-p1 <- plothapmeans(meanshap, "PC1", "PC2")
-p2 <- plothapmeans(meanshap, "PC3", "PC4")
-p3 <- plothapmeans(meanshap, "PC5", "PC6")
-p4 <- plothapmeans(meanshap, "PC7", "PC8")
-p5 <- plothapmeans(meanshap, "PC9", "PC10")
-p6 <- plothapmeans(meanshap, "PC11", "PC12")
-
-ggarrange(p1, p2, p3, p4, p5, p6,
-          nrow = 3, ncol = 2, 
-          align = "v")
-```
-
-If we plot our samples together with the HapMap, we see the following
-
-```{r hapmap plus adapt}
 plothapsamp <- function(dat1, dat2, x1, y1)
 {
   p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
@@ -186,7 +162,9 @@ ggarrange(p1, p2, p3, p4, p5, p6,
           align = "v")
 ```
 
-Looking at our samples with population designation
+We can also plot our Irish, Polish, Italian, and Portuguese samples.
+Clearly there is a north-south structure in Europe, capture aslso by our samples.
+
 ```{r samples w/pop}
 plothapgroup <- function(dat1, dat2, x1, y1)
 {
@@ -216,7 +194,7 @@ ggarrange(p1, p2, p3, p4, p5, p6,
           align = "v")
 ```
 
-# Clustering
+## Clustering
 
 For an initial clustering attempt I'll group the HapMap populations into continents, as shown in the table:
 
@@ -246,9 +224,9 @@ pca.eigenvec$continent[(pca.eigenvec$database == "CHB" | pca.eigenvec$database =
 pca.eigenvec$continent[(pca.eigenvec$database == "GIH" | pca.eigenvec$database == "MEX")] <- "America"
 ```
 
-If we look at scatter plots with the continent variable
+If we look at scatter plots of the HapMap samples with the continent variable.
 
-```{r continent plots}
+```{r continent plots, fig.height=8}
 plotcont <- function(dat, x1, y1)
 {
   p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "continent")) +
@@ -287,7 +265,7 @@ summary(test$continent)
 
 Scatter plots of the predicted continent groups 
 
-```{r prediceted plots}
+```{r prediceted plots, fig.height=8}
 p1 <- plotcont(test, "PC1", "PC2")
 p2 <- plotcont(test, "PC3", "PC4")
 p3 <- plotcont(test, "PC5", "PC6")
@@ -298,7 +276,8 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
           align = "v")
 ```
 
-The next step will be to create a clustering of suthern versus northern european populations, using CEU and TSI as training sets. We'll double check our clustering with the samples that we have population information (Irish, Polish, Italian, and Portuguese).
+The next step will be to create a clustering of suthern versus northern european populations, using CEU and TSI as training sets. 
+We'll double check our clustering with the samples that we have population information (Irish, Polish, Italian, and Portuguese).
 
 ```{r svm cluster europe}
 pca.eigenvec$Eur[pca.eigenvec$database == "CEU"] <- "NEruope"
@@ -317,7 +296,7 @@ test.eur$continent <- predict(svm.fit.eur, test.eur)
 summary(test.eur$continent)
 ```
 
-```{r Eur predicted plots}
+```{r Eur predicted plots, fig.height=8}
 p1 <- plotcont(test.eur, "PC1", "PC2")
 p2 <- plotcont(test.eur, "PC3", "PC4")
 p3 <- plotcont(test.eur, "PC5", "PC6")
@@ -335,14 +314,12 @@ test$Eur <- NULL
 test <- droplevels(test)
 ```
 
-# Combining datasets
+## Combining datasets
 
-```{r read facedata}
+```{r read facedata, message=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/PCA", sep = ""))
-getwd()
-#Read data
 coeffs   <- read.csv("coeffs.csv")
 ```
 
