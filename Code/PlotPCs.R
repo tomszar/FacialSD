@@ -30,3 +30,22 @@ PlotPCs <- function(dataset, group, minPC, maxPC)
   
   return(p1)
 }
+
+plotvect <- function(matrix, factors, vectors, x1, y1, scale=3)
+{
+  #Plot of vector as arrows with the scatter plot as background
+  #You can define how much to scale vectors with scale
+  p1 <- ggplot(matrix, aes_string(x = x1, y = y1)) +
+            geom_point(alpha = 0.05) + 
+            geom_segment(data = vectors, 
+                                aes_string(x = 0, y = 0,
+                                xend = paste(x1, "*",scale, sep = ""), 
+                                yend = paste(y1, "*",scale, sep = ""),
+                                color = "factors"), 
+                         arrow = arrow(length = unit(0.03, "npc")), size = 1) +
+            scale_color_discrete(name = "Groups") + 
+            theme_pubr()
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+  
+}
