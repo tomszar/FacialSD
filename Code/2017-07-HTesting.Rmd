@@ -1,28 +1,26 @@
 ---
+title: Hypothesis testing
 output: 
   html_document: default
 ---
 
-# Preliminaries
+In this script we will see the preliminary hypothesis testing on the effects of sex on face shape, as well as the allometric and non-allometric decomposition of sexual dimorphism.
 
-We will load the necessary libraries
+## Preliminaries
 
-```{r libraries, warning=FALSE}
+We will load the necessary libraries and datasets
+
+```{r libraries dataset, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
-library(gridExtra)
+library(ggpubr)
 library(Hotelling)
 library(tidyr)
-```
-
-Setting wd and loading databases
-
-```{r databases}
+library(vegan)
+library(HDMD)
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/PCA", sep = ""))
-getwd()
-#Read data
 coeffs   <- read.csv("coeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 eigenval <- read.csv("eigenvalues.csv", header=F)
@@ -35,37 +33,45 @@ facets   <- read.csv("facets.csv", header=F)
 For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age)
 
 ```{r data cleaning}
-#Remove no sex participants
 coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
 coeffs = droplevels(coeffs)
-#Removed NAs from database
 coeffs = na.omit(coeffs)
 dim(coeffs)
+head(coeffs[,1:8])
 ```
 
 After cleaning, we end up with `r nrow(coeffs)` individuals
 
-# Facial sexual dimorphism analysis
+## Facial sexual dimorphism analysis
 
-Comparing males and females, using Hotelling's T^2 statistic. The results are virtually identical when using a normalized PC space (not shown here)
+I will first test for differences in location between males in females in the face PCA.
+I will first compare males and females location, using Hotelling's T^2^ statistic, which is a multivariate t-test.
+The results are virtually identical when using a normalized PC space (not shown here).
+Also, I will use the more involved PERMANOVA (Anderson 2001) using the mahalanobis distance between males and females.
+The benefit of mahalanobis distance is that the within-group variance is taken into account, and not only the euclidean distance in space. 
 
 ```{r hotelling}
 set.seed(10)
-fit = hotelling.test(.~Sex, data = coeffs[,c(2, 6:ncol(coeffs))])
+fit <- hotelling.test(.~Sex, data = coeffs[,c(2, 6:ncol(coeffs))])
+fit
+fit <- adonis(coeffs[ , 6:ncol(coeffs)] ~ coeffs$Sex, method="mahalanobis")
 fit
 ```
 
-We can use the mahalanobis distance between group means as a meassure of effect size  
+We can also use the mahalanobis distance between group means as a measure of effect size.
+In this case there is nothing else to compare with, so we show the mahalanobis distance between males and females in the whole dataset. 
 
 ```{r effect size}
-library(HDMD)
 madist <- pairwise.mahalanobis(coeffs[, 6:ncol(coeffs)], coeffs$Sex)
 madist$distance
 ```
 
-# Alloemtric and non-allometric components
+Remember to test the null hypothesis that the dispersions are identical between groups, using Anderson 2006
 
-First, we will create consensus faces, taking the average male and female
+## Allometric and non-allometric components
+
+In this section I will decompose the total facial sexual dimorphims (FSD), defined as the difference between the average female and average male location, into its allometric and non-allometric components.
+To do that, first we will create consensus faces, taking the average male and female.
 
 ```{r consensus faces}
 Males   <- colMeans(coeffs[coeffs$Sex == 'Male', 6:ncol(coeffs)])
@@ -74,39 +80,44 @@ consensus <- as.data.frame(t(data.frame(Males, Females)))
 remove(Males, Females)
 ```
 
-This are scatter plots with PC1 with PC2, and PC3 with PC4. The male and female consensus faces are highlighted to show their position in relation to the whole data set.
+We can see the position of the average male and female faces in the first PCs.
+The male and female consensus faces are highlighted to show their position in relation to the whole data set.
 
-```{r consensus plots, fig.height=8, fig.width=12}
-p1 <- ggplot(coeffs, aes(PC1, PC2, colour=Sex)) + geom_point(alpha=0.1) + 
-             geom_point(data = consensus, aes(PC1, PC2), color="red", size=3) + theme_bw()
+```{r consensus plots, fig.height=10, fig.width=10}
+plotmeans <- function(matrix, means, factor, x1, y1)
+{
+  p1 <- ggplot(matrix, aes_string(x = x1, y = y1)) +
+            geom_point(aes(colour = factor), alpha=0.1) +
+            geom_point(data = means, aes_string(x = x1, y = y1), color="red", size=3) +
+            theme_pubr()
+  p1 <- ggpar(p1, palette = "jco")
+  return(p1)
+}
+p1 <- plotmeans(coeffs[,6:ncol(coeffs)], consensus, coeffs$Sex, "PC1", "PC2")
+p2 <- plotmeans(coeffs[,6:ncol(coeffs)], consensus, coeffs$Sex, "PC3", "PC4")
+p3 <- plotmeans(coeffs[,6:ncol(coeffs)], consensus, coeffs$Sex, "PC5", "PC6")
+p4 <- plotmeans(coeffs[,6:ncol(coeffs)], consensus, coeffs$Sex, "PC7", "PC8")
+p5 <- plotmeans(coeffs[,6:ncol(coeffs)], consensus, coeffs$Sex, "PC9", "PC10")
+p6 <- plotmeans(coeffs[,6:ncol(coeffs)], consensus, coeffs$Sex, "PC11", "PC12")
 
-p2 <- ggplot(coeffs, aes(PC3, PC4, colour=Sex)) + geom_point(alpha=0.1) + 
-             geom_point(data = consensus, aes(PC3, PC4), color="red", size=3) + theme_bw()
-
-p3 <- ggplot(coeffs, aes(PC5, PC6, colour=Sex)) + geom_point(alpha=0.1) + 
-             geom_point(data = consensus, aes(PC5, PC6), color="red", size=3) + theme_bw()
-
-p4 <- ggplot(coeffs, aes(PC7, PC8, colour=Sex)) + geom_point(alpha=0.1) + 
-             geom_point(data = consensus, aes(PC7, PC8), color="red", size=3) + theme_bw()
-
-grid.arrange(p1, p2, p3, p4, ncol=2)
+ggarrange(p1, p2, p3, p4, p5, p6, 
+          ncol=2, nrow=3, 
+          common.legend = T, legend = "top")
 ```
 
-To estimate the total FSD we substract the male consensus face to the female one
+To estimate the total FSD we subtract the male consensus face to the female one
 
 ```{r totalFSD}
 consensus[3,] <- consensus[2,] - consensus[1,]
 row.names(consensus) <- c("Males", "Females", "TotalSD")
 ```
 
-To obtain the allometric component, we run a multivariate linear regression. Also, we can compute manova tables to estimate the effect of Sex and Height on face shape (face PCs) 
+To obtain the allometric component, we run a multivariate linear regression. 
+Also, we can compute manova tables to estimate the effect of Sex and Height on face shape (face PCs), showing that both are significant predictors. 
 
 ```{r MLR}
 #Multivariate linear regression of height and sex on face
 fit <- lm(as.matrix(coeffs[,6:ncol(coeffs)]) ~ coeffs$Sex + coeffs$Height)
-summary(manova(fit), test="Hotelling-Lawley")
-summary(manova(fit), test="Wilks")
-summary(manova(fit), test="Roy")
 summary(manova(fit), test="Pillai")
 ```
 
@@ -115,14 +126,10 @@ Furthermore, we can test whether there is a Sex by Height interaction
 ```{r MLR interaction}
 #Multivariate linear regression of height and sex on face
 fitint <- lm(as.matrix(coeffs[,6:ncol(coeffs)]) ~ coeffs$Sex * coeffs$Height)
-summary(manova(fitint), test="Hotelling-Lawley")
-summary(manova(fitint), test="Wilks")
-summary(manova(fitint), test="Roy")
 summary(manova(fitint), test="Pillai")
 ```
 
-
-Allometric and non-allometric components estimation
+To decompose the total FSD into its allometric and non-allometric components, we use the estimated effect of height on the face, scaled by the mean difference between females and males.
 
 ```{r fsd estimations}
 consensus[4,] <- coef(fit)[3,] * (mean(coeffs[coeffs$Sex == 'Female',4]) - mean(coeffs[coeffs$Sex == 'Male',4]))
@@ -130,29 +137,24 @@ consensus[5,] <- as.numeric(consensus[3,]) - consensus[4,]
 row.names(consensus) <- c("Males", "Females", "TotalSD", "Allometric", "Non-allometric")
 ```
 
-Plot with SD vectors highlighted
+We can graphically see the magnitude and direction of the vectors.
+Note that in the plots, the vectors are scaled by 3.
 
-```{r vectors, fig.height=6, fig.width=12}
-p1 = ggplot(coeffs, aes(PC1, PC2, colour=Sex)) + geom_point(alpha=0.1) +
-    geom_point(data = consensus[1:2, ], aes(PC1, PC2), color="red", size=5) + 
-    geom_segment(aes(x = 0, y = 0, xend = consensus[4,1]*5, yend = consensus[4,2]*5), 
-                 arrow = arrow(length = unit(0.03, "npc")), size = 1, color="yellow4") + 
-    geom_segment(aes(x = 0, y = 0, xend = consensus[3,1]*5, yend = consensus[3,2]*5), 
-                 arrow = arrow(), size = 2, color = "navy") + 
-    geom_segment(aes(x = 0, y = 0, xend = consensus[5,1]*5, yend = consensus[5,2]*5), 
-                 arrow = arrow(length = unit(0.03, "npc")), size = 1, color="green4")
+```{r vectors, fig.height=10, fig.width=10, message=FALSE}
+source("PlotPCs.R")
+p1 <- plotvect(coeffs[,6:ncol(coeffs)], rownames(consensus)[3:5], consensus[3:5,], "PC1", "PC2")
+p2 <- plotvect(coeffs[,6:ncol(coeffs)], rownames(consensus)[3:5], consensus[3:5,], "PC3", "PC4")
+p3 <- plotvect(coeffs[,6:ncol(coeffs)], rownames(consensus)[3:5], consensus[3:5,], "PC5", "PC6")
+p4 <- plotvect(coeffs[,6:ncol(coeffs)], rownames(consensus)[3:5], consensus[3:5,], "PC7", "PC8")
+p5 <- plotvect(coeffs[,6:ncol(coeffs)], rownames(consensus)[3:5], consensus[3:5,], "PC9", "PC10")
+p6 <- plotvect(coeffs[,6:ncol(coeffs)], rownames(consensus)[3:5], consensus[3:5,], "PC11", "PC12")
 
-p2 = ggplot(coeffs, aes(PC3, PC4, colour=Sex)) + geom_point(alpha=0.1) +
-    geom_point(data = consensus[3:4,], aes(PC3, PC4), color="red", size=5) + 
-    geom_segment(aes(x = 0, y = 0, xend = consensus[4,3]*5, yend = consensus[4,4]*5), 
-                 arrow = arrow(length = unit(0.03, "npc")), size = 1, color="yellow4") + 
-    geom_segment(aes(x = 0, y = 0, xend = consensus[3,3]*5, yend = consensus[3,4]*5), 
-                 arrow = arrow(), size = 2, color = "navy") + 
-    geom_segment(aes(x = 0, y = 0, xend = consensus[5,3]*5, yend = consensus[5,4]*5), 
-                 arrow = arrow(length = unit(0.03, "npc")), size = 1, color="green4")
-
-grid.arrange(p1,p2, ncol=2)
+ggarrange(p1, p2, p3, p4, p5, p6, 
+          ncol=2, nrow=3, 
+          common.legend = T, legend = "top")
 ```
+
+We export the fitted model and the vectors to visualize them as face shapes, [here](2017-07-FaceEffects.html).
 
 ```{r export}
 setwd('..')
