@@ -1,31 +1,26 @@
 ---
+title: Descriptive statistics
 output:
   html_document: default
 ---
-# Preliminaries
 
-We will load the necessary libraries
+In this section we will look at descriptive statistics from covariates, and from the face PCA.
+Note that the face PCA was already produced in the matlab jupyter notebook, so any adjustment to the face PCA must be done there.
 
-```{r libraries, warning=FALSE}
+## Preliminaries
+
+We will load the necessary libraries, and databases
+
+```{r libraries data, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
 library(GGally)
-library(plotly)
-library(gridExtra)
+library(ggpubr)
 library(psych)
-library(Hotelling)
 library(ggjoy)
-library(tidyr)
-```
-
-Setting wd and loading databases
-
-```{r databases}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/PCA", sep = ""))
-getwd()
-#Read data
 coeffs   <- read.csv("coeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 eigenval <- read.csv("eigenvalues.csv", header=F)
@@ -38,12 +33,11 @@ facets   <- read.csv("facets.csv", header=F)
 For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age)
 
 ```{r data cleaning}
-#Remove no sex participants
-coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
-coeffs = droplevels(coeffs)
-#Removed NAs from database
-coeffs = na.omit(coeffs)
+coeffs <- filter(coeffs, Sex == 'Female' | Sex == 'Male')
+coeffs <- droplevels(coeffs)
+coeffs <- na.omit(coeffs)
 dim(coeffs)
+head(coeffs[,1:8])
 ```
 
 After cleaning, we end up with `r nrow(coeffs)` individuals
@@ -56,35 +50,36 @@ We can look at summary statistics
 summary(coeffs[,2:5])
 ```
 
-As well as summary statistics grouped by sex
+As well as summary statistics grouped by sex, where we can see differences in height and weight.
 
 ```{r summary by sex}
 describeBy(coeffs[,3:5], coeffs$Sex)
 ```
 
-we can also explore some correlograms
+We can also explore some correlograms
 
-```{r correlogram, warning=FALSE}
-ggpairs(coeffs, columns = 2:7, ggplot2::aes(colour=Sex, alpha = 0.2), 
-       lower = list(continuous = "smooth"))
+```{r correlogram, fig.height = 8, fig.width = 12, fig.align = "center", message=FALSE}
+p1 <- ggpairs(coeffs, columns = 2:7, ggplot2::aes(colour=Sex, alpha = 0.1), 
+              lower = list(continuous = "smooth")) + theme_pubr()
+p1
 ```
 
-# Facial sexual dimorphism analysis
+We can use joy plots to compare the distributions of each PC for each sex.
 
-Comparing sex differences in each PC using joy plots
-
-```{r joyplots, fig.height = 15, fig.width = 10, fig.align = "center"}
+```{r joyplots, fig.height = 10, fig.width = 8, fig.align = "center", message=FALSE}
 source("PlotPCs.R")
-p1 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC1", "PC9")
-p2 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC10", "PC19")
-p3 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC20", "PC29")
-p4 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC30", "PC39")
-grid.arrange(p1, p2, p3, p4)
+p1 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex ,"PC1", "PC9")
+p2 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC10", "PC19")
+p3 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC20", "PC29")
+p4 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC30", "PC39")
+ggarrange(p1, p2, p3, p4,
+          common.legend = T, legend = "bottom")
 
-p1 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC40", "PC49")
-p2 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC50", "PC59")
-p3 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC60", "PC69")
-p4 = PlotPCs(coeffs[, c(2,6:ncol(coeffs)) ], "PC70", "PC79")
-grid.arrange(p1, p2, p3, p4)
+p1 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC40", "PC49")
+p2 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC50", "PC59")
+p3 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC60", "PC69")
+p4 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC70", "PC79")
+ggarrange(p1, p2, p3, p4, 
+          common.legend = T, legend = "bottom")
 ```
 
