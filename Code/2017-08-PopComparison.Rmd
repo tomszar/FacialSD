@@ -3,6 +3,7 @@ output:
   html_document:
     fig_height: 10
     fig_width: 10
+title: Population comparisons
 ---
 
 In this script we'll look at the difference in patterns of facial sexual dimorphism between the populations previously defined. 
@@ -76,22 +77,69 @@ ggarrange(p1, p2, p3, p4,
           align = "v")
 ```
 
+We can also see the distribution in the first PCs of sexes by each continental group
+
+```{r sexes by continent plots, fig.height = 14, fig.width = 10}
+plotsexes <- function(PCA, cont, x1, y1)
+{
+  highPCA <- filter(PCA, cont)
+  backPCA <- filter(PCA, !cont)
+  sexes   <- filter(MergedDat[[1]], cont)$Sex
+  title   <- as.character(MergedDat[[1]]$continent[cont][1])
+  p1 <- ggplot(highPCA, aes_string(x = x1, y = y1)) + 
+            geom_point(aes(color = sexes)) + 
+            geom_point(data = backPCA, alpha = 0.01, aes_string(x = x1, y = y1)) + 
+            theme_pubr() + 
+            ggtitle(title)
+  p1 <- ggpar(p1, palette = "jco")
+  return(p1)
+}
+
+p1 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Africa", "PC1", "PC2")
+p2 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Africa", "PC3", "PC4")
+p3 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "America", "PC1", "PC2")
+p4 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "America", "PC3", "PC4")
+p5 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Asia", "PC1", "PC2")
+p6 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Asia", "PC3", "PC4")
+p7 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC1", "PC2")
+p8 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC3", "PC4")
+p9 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC1", "PC2")
+p10 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC3", "PC4")
+
+ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, 
+          ncol = 2, nrow = 5,
+          common.legend = TRUE, legend = "bottom", 
+          align = "v")
+```
+
+
 # Hypohtesis testing
 
+It is clear from the scatter plots that Asian faces differ substantially in their sample size. 
+This could affect our estimations for differences.
+For example, when estimating location differences between the groups, it is not possible to ascertain that that difference is due to location or dispersion, which may be affected by unbalanced data sets. 
+Therefore, we'll first remove Asian samples from our location difference tests.
 We'll test whether group averages differ between groups, by using a 5x2 design using continent and Sex as grouping variables.
 As shown, both continet and Sex (and their interaction) are significant predictors of face shape.
 
+**Note:** What if using mahalanobis distance instead of euclidean, to take unequal sample sizes into account?
+
 ```{r MANOVA}
-fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
-summary(fit, test="Pillai")
 library(vegan)
-fit2 <- adonis(as.matrix(MergedDat[[2]]) ~ Sex * continent, data = MergedDat[[1]], permutations = 100, 
+pca <- as.matrix(dplyr::filter(MergedDat[[2]], MergedDat[[1]]$continent != "Asia"))
+sex <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$Sex
+continent <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$continent
+
+fit       <- manova(pca ~ sex * continent)
+summary(fit, test="Pillai")
+fit2 <- adonis(pca ~ sex * continent, permutations = 999, 
                method = "euclidean")
+fit2
 ```
 
 We can also compute pairwise mahalanobis distance as a measure of effect size.
-Let's see first the distances between continents.
-As shown, Asia is the least similar groups overall
+This is preffered from an Euclidean distance, because the within-group variation is taken into account in the mahalanobis distance.
+As shown in the dendogram, Asia is the least similar groups overall.
 
 ```{r mahal continent}
 library(HDMD)
@@ -119,6 +167,8 @@ plot(hclust(as.dist(madist$distance)))
 
 Another approach is to calculate the sexual dimorphism vectors for each population, and compare them.
 We can compare the magnitude and angle between vectors to assess the degree and pattern of facial sexual dimorphism respectively.
+For the pattern of SD (angle) we can use the cosine similarity measure to assess statistical significance of pairwise comparisons. 
+We can use permutation (permuting continent labels) to assess statistical significance.
 First, let's look at the position of each consensus face (continent x Sex).
 As seen in the first four PCs, Asian faces seem more divergent in the face space, corroborating the dendogram results.
 Also, looking at the male-female pairs, we see a similar direction in the first two PCs, while lower PCs seem to diverge more.
@@ -249,6 +299,8 @@ ma <- getPAngle(totalSD[,2:88])
 ma
 plot(hclust(as.dist(ma)))
 
+#Not working
+nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
 ```
 
 We can compute the angle between the total an allometric SD for each group.
