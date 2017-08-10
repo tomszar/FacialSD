@@ -1,0 +1,17 @@
+---
+title: Content
+output: html_document
+---
+
+This is the main page of the facial sexual dimorphism analysis.
+The links below will take you to the proper analysis.
+Each link is in sequential order, many of them building on the output from the previous scripts.
+
+- Here you can see some [Descriptive statistics](2017-07-DescriptiveStats.html) from the covariates and Face PCA.
+- Here you can visualize interactively some preliminary [face effects](2017-07-FaceEffects.html) of sexual dimorphism. 
+Remember to open this file in chrome.
+- Here is the [hypothesis testing](2017-07-HTesting.html) on the effect of sex and height on the face, using the whole dataset.
+This is also the preliminary analysis on the allometric and non-allometric decomposition.
+- Here you can see the clustering of the [genetic PCA](2017-07-GenAnalysis.html). 
+*Note:** the genetic PCA was made in plink, using only the HapMap individuals to create the PCA, and then projecting our samples.
+- This is the core of the analysis, on the [population comparisons](2017-08-PopComparison.html). 
