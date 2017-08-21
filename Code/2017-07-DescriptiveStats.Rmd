@@ -64,21 +64,23 @@ p1 <- ggpairs(coeffs, columns = 2:7, ggplot2::aes(colour=Sex, alpha = 0.1),
 p1
 ```
 
-We can use joy plots to compare the distributions of each PC for each sex.
+We can use joy plots to compare the distributions of each PC grouped by sex.
+Note that I'll use the mahalanobis space instead of the euclidean one.
 
 ```{r joyplots, fig.height = 10, fig.width = 8, fig.align = "center", message=FALSE}
 source("PlotPCs.R")
-p1 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex ,"PC1", "PC9")
-p2 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC10", "PC19")
-p3 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC20", "PC29")
-p4 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC30", "PC39")
+ts <- as.data.frame(scale(coeffs[,6:92]))
+p1 <- PlotPCs(ts, coeffs$Sex ,"PC1", "PC9")
+p2 <- PlotPCs(ts, coeffs$Sex, "PC10", "PC19")
+p3 <- PlotPCs(ts, coeffs$Sex, "PC20", "PC29")
+p4 <- PlotPCs(ts, coeffs$Sex, "PC30", "PC39")
 ggarrange(p1, p2, p3, p4,
           common.legend = T, legend = "bottom")
 
-p1 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC40", "PC49")
-p2 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC50", "PC59")
-p3 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC60", "PC69")
-p4 <- PlotPCs(coeffs[, c(6:ncol(coeffs)) ], coeffs$Sex, "PC70", "PC79")
+p1 <- PlotPCs(ts, coeffs$Sex, "PC40", "PC49")
+p2 <- PlotPCs(ts, coeffs$Sex, "PC50", "PC59")
+p3 <- PlotPCs(ts, coeffs$Sex, "PC60", "PC69")
+p4 <- PlotPCs(ts, coeffs$Sex, "PC70", "PC79")
 ggarrange(p1, p2, p3, p4, 
           common.legend = T, legend = "bottom")
 ```
