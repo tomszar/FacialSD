@@ -13,5 +13,5 @@ This is also the preliminary analysis on the allometric and non-allometric decom
 - Here you can visualize interactively some preliminary [face effects](Code/2017-07-FaceEffects.html) of sexual dimorphism mande in the previous script. 
 Remember to open this file in chrome.
 - Here you can see the clustering of the [genetic PCA](Code/2017-07-GenAnalysis.html). 
-*Note:** the genetic PCA was made in plink, using only the HapMap individuals to create the PCA, and then projecting our samples.
+**Note:** the genetic PCA was made in plink, using only the HapMap individuals to create the PCA, and then projecting our samples.
 - This is the core of the analysis, on the [population comparisons](Code/2017-08-PopComparison.html). 
