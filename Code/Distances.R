@@ -99,16 +99,17 @@ getAngleperm <- function(matrix, factor, groups, perm = 1000)
   ngroups <- length(levels(groups))
   matrix  <- as.data.frame(matrix)
   nullmatrix <- matrix(ncol = perm, nrow = (ngroups * (ngroups-1) /2) )
+  set.seed(10)
   for(r in 1:(ngroups-1))
   {
     for(r2 in 2:ngroups)
     {
+      if(r < r2){
       logic     <- (groups == levels(groups)[r] | groups == levels(groups)[r2])
       submatrix <- dplyr::filter(matrix, logic)
       subgroups <- groups[logic]
       subfactor <- factor[logic]
       
-      set.seed(10)
       nullvals <- replicate(perm,
                             {
                               resgroups <- sample(subgroups)
@@ -120,7 +121,8 @@ getAngleperm <- function(matrix, factor, groups, perm = 1000)
                             }
       )
       nullmatrix[row, ] <- nullvals
-      row = row + 1
+      row <- row + 1
+      }
     }
   }
   return(nullmatrix)
