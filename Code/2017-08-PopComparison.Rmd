@@ -12,19 +12,21 @@ Also, we'll estimate the vectors of FSD, as well as the allometric and non-allom
 To do that, we'll compare the magnitude between vectors (degree of facial sexual dimorphism), and the direction (pattern of facial sexual dimorphism). 
 
 
-# Preliminaries
+## Preliminaries
 
 Loading libraries
 
-```{r libraries}
+```{r libraries, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(dplyr)
 library(ggpubr)
+library(vegan)
+library(HDMD)
 ```
 
 Loading databases
 
-```{r databases}
+```{r databases, message=FALSE, warning=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
@@ -32,7 +34,7 @@ setwd(paste(path, "/Results/MergedData", sep = ""))
 load("MergedDat.RData")
 ```
 
-# Data cleaning
+## Data cleaning
 
 I'll remove participants without Male or Female self-identified sex.
 You can see the IID of the participants removed.
@@ -47,31 +49,33 @@ MergedDat[[1]]$Sex <- droplevels(MergedDat[[1]]$Sex)
 ```
 
 
-# Descriptive and exploratory analyses
+## Descriptive and exploratory analyses
 
 ```{r summary}
 summary(MergedDat[[1]])
-summ <- MergedDat[[1]] %>% group_by(continent, Sex) %>% select(Age, Height, Weight) %>% 
+summ <- MergedDat[[1]] %>% group_by(continent, Sex) %>% dplyr::select(Age, Height, Weight) %>% 
             summarise_all(funs(mean(. , na.rm = T), median(. , na.rm = T), sd(. , na.rm = T)))
 tbl_df(summ)
 ```
 
-We can compare the distributions of PCs for each geographical group
+We can compare the distributions of PCs for each geographical group using joy plots.
+Note that the PCA has been scaled.
 
-```{r joyplots}
+```{r joyplots, message=FALSE}
 source("PlotPCs.R")
-p1 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC1", "PC9")
-p2 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC10", "PC19")
-p3 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC20", "PC29")
-p4 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC30", "PC39")
+ts <- as.data.frame(scale(MergedDat[[2]]))
+p1 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC1", "PC9")
+p2 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC10", "PC19")
+p3 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC20", "PC29")
+p4 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC30", "PC39")
 ggarrange(p1, p2, p3, p4,
           common.legend = TRUE, legend = "right", 
           align = "v")
 
-p1 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC40", "PC49")
-p2 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC50", "PC59")
-p3 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC60", "PC69")
-p4 <- PlotPCs(MergedDat[[2]], MergedDat[[1]]$continent, "PC70", "PC79")
+p1 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC40", "PC49")
+p2 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC50", "PC59")
+p3 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC60", "PC69")
+p4 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC70", "PC79")
 ggarrange(p1, p2, p3, p4,
           common.legend = TRUE, legend = "right", 
           align = "v")
@@ -113,7 +117,7 @@ ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
 ```
 
 
-# Hypohtesis testing
+## Hypohtesis testing
 
 It is clear from the scatter plots that Asian faces differ substantially in their sample size. 
 This could affect our estimations for differences.
@@ -125,7 +129,6 @@ As shown, both continet and Sex (and their interaction) are significant predicto
 **Note:** What if using mahalanobis distance instead of euclidean, to take unequal sample sizes into account?
 
 ```{r MANOVA}
-library(vegan)
 pca <- as.matrix(dplyr::filter(MergedDat[[2]], MergedDat[[1]]$continent != "Asia"))
 sex <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$Sex
 continent <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$continent
@@ -133,7 +136,7 @@ continent <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$continent
 fit       <- manova(pca ~ sex * continent)
 summary(fit, test="Pillai")
 fit2 <- adonis(pca ~ sex * continent, permutations = 999, 
-               method = "euclidean")
+               method = "mahalanobis")
 fit2
 ```
 
@@ -142,7 +145,6 @@ This is preffered from an Euclidean distance, because the within-group variation
 As shown in the dendogram, Asia is the least similar groups overall.
 
 ```{r mahal continent}
-library(HDMD)
 madistcont <- pairwise.mahalanobis(MergedDat[[2]], MergedDat[[1]]$continent)
 dimnames(madistcont$distance) <- list(levels(MergedDat[[1]]$continent), levels(MergedDat[[1]]$continent))
 madistcont$distance
@@ -163,7 +165,7 @@ plot(hclust(as.dist(madist$distance)))
 ```
 
 
-# Vectors comparison
+## Vectors comparison
 
 Another approach is to calculate the sexual dimorphism vectors for each population, and compare them.
 We can compare the magnitude and angle between vectors to assess the degree and pattern of facial sexual dimorphism respectively.
@@ -300,7 +302,7 @@ ma
 plot(hclust(as.dist(ma)))
 
 #Not working
-nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
+#nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
 ```
 
 We can compute the angle between the total an allometric SD for each group.
