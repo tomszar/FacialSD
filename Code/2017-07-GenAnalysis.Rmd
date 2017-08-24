@@ -23,6 +23,7 @@ library(ggplot2)
 library(dplyr)
 library(GGally)
 library(ggpubr)
+library(caret)
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/GenClustering", sep = ""))
@@ -204,7 +205,7 @@ ASW | Africa
 CEU | Europe
 CHB | Asia
 CHD | Asia
-GIH | American
+GIH | SouthAsia
 JPT | Asia
 LWK | Africa
 MXL | American
@@ -221,7 +222,8 @@ pca.eigenvec$continent[(pca.eigenvec$database == "ASW" | pca.eigenvec$database =
 pca.eigenvec$continent[(pca.eigenvec$database == "CHB" | pca.eigenvec$database == "CHD" |
                         pca.eigenvec$database == "JPT")]                                  <- "Asia"
 
-pca.eigenvec$continent[(pca.eigenvec$database == "GIH" | pca.eigenvec$database == "MEX")] <- "America"
+pca.eigenvec$continent[pca.eigenvec$database == "MEX"] <- "America"
+pca.eigenvec$continent[pca.eigenvec$database == "GIH"] <- "SouthAsia"
 ```
 
 If we look at scatter plots of the HapMap samples with the continent variable.
@@ -247,8 +249,7 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
 
 I'll use the HapMap samples as training, with a 5-fold cross-validation, and predict the values of our samples.
 
-```{r SVM clustering continent}
-library(caret)
+```{r SVM clustering continent, message=FALSE}
 set.seed(10)
 train <- pca.eigenvec %>% filter(database != "ADAPT")
 test  <- pca.eigenvec %>% filter(database == "ADAPT") 
