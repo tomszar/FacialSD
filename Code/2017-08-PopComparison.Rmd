@@ -14,19 +14,14 @@ To do that, we'll compare the magnitude between vectors (degree of facial sexual
 
 ## Preliminaries
 
-Loading libraries
+Loading libraries and databases
 
-```{r libraries, message=FALSE, warning=FALSE}
+```{r libraries data, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(dplyr)
 library(ggpubr)
 library(vegan)
 library(HDMD)
-```
-
-Loading databases
-
-```{r databases, message=FALSE, warning=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
@@ -105,12 +100,14 @@ p3 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "America", "PC1", "P
 p4 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "America", "PC3", "PC4")
 p5 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Asia", "PC1", "PC2")
 p6 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Asia", "PC3", "PC4")
-p7 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC1", "PC2")
-p8 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC3", "PC4")
-p9 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC1", "PC2")
-p10 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC3", "PC4")
+p7 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SouthAsia", "PC1", "PC2")
+p8 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SouthAsia", "PC3", "PC4")
+p9 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC1", "PC2")
+p10 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC3", "PC4")
+p11 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC1", "PC2")
+p12 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC3", "PC4")
 
-ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, 
+ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, 
           ncol = 2, nrow = 5,
           common.legend = TRUE, legend = "bottom", 
           align = "v")
@@ -119,29 +116,30 @@ ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
 
 ## Hypohtesis testing
 
-It is clear from the scatter plots that Asian faces differ substantially in their sample size. 
+It is clear from the scatter plots that Asian and South Asian samples differ substantially in their sample size. 
 This could affect our estimations for differences.
 For example, when estimating location differences between the groups, it is not possible to ascertain that that difference is due to location or dispersion, which may be affected by unbalanced data sets. 
 Therefore, we'll first remove Asian samples from our location difference tests.
 We'll test whether group averages differ between groups, by using a 5x2 design using continent and Sex as grouping variables.
-As shown, both continet and Sex (and their interaction) are significant predictors of face shape.
+As shown, both continent and Sex (and their interaction) are significant predictors of face shape.
 
-**Note:** What if using mahalanobis distance instead of euclidean, to take unequal sample sizes into account?
 
 ```{r MANOVA}
-pca <- as.matrix(dplyr::filter(MergedDat[[2]], MergedDat[[1]]$continent != "Asia"))
-sex <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$Sex
-continent <- dplyr::filter(MergedDat[[1]], continent != "Asia" )$continent
+fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
+summary(fit)
 
-fit       <- manova(pca ~ sex * continent)
-summary(fit, test="Pillai")
-fit2 <- adonis(pca ~ sex * continent, permutations = 999, 
-               method = "mahalanobis")
-fit2
+mahamatrix <- vegdist(MergedDat[[2]], method = "mahalanobis")
+fit2 <- betadisper(mahamatrix, MergedDat[[1]]$continent)
+plot(fit2)
+permutest(fit2, pairwise = T)
+
+#fit2 <- adonis(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent, permutations = 999, 
+#               method = "mahalanobis")
+#fit2
 ```
 
 We can also compute pairwise mahalanobis distance as a measure of effect size.
-This is preffered from an Euclidean distance, because the within-group variation is taken into account in the mahalanobis distance.
+This is preferred from an Euclidean distance, because the within-group variation is taken into account in the mahalanobis distance.
 As shown in the dendogram, Asia is the least similar groups overall.
 
 ```{r mahal continent}
@@ -205,14 +203,14 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
           align = "v")
 ```
 
-We can obtain the vector of total sexual dimorphism by substracting the female to the male consensus face.
+We can obtain the vector of total sexual dimorphism by subtracting the female to the male consensus face.
 To obtain the allometric component, we run a multivariate linear regression of face shape against Sex, Height, and continent. 
 Also, we can compute manova tables to estimate the effect of Sex, Height, and continent on face shape (face PCs).
 In this case, we'll also estimate the Height by continent interaction, so as to compare the vectors between continental groups, if not, they would have the same vector.
 
 ```{r SD decomposition}
 #TOTAL SD
-totalSD <- matrix(0, ncol = 88, nrow = 5)
+totalSD <- matrix(0, ncol = 88, nrow = 6)
 totalSD <- data.frame(totalSD)
 totalSD[,1] <- levels(consensus$continent)
 colnames(totalSD) <- c("continent", colnames(MergedDat[[2]]))
