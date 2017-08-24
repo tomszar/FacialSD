@@ -54,11 +54,11 @@ I'll remove samples that contain the word genome (surely those are not in the fa
 I've also seen that some of those are outliers in some PCs
 
 ```{r removing samples}
-removed <- filter(pca.eigenvec, IID == "A_103" | grepl("^genome", IID) | 
+removed <- dplyr::filter(pca.eigenvec, IID == "A_103" | grepl("^genome", IID) | 
                     grepl("^ver", IID) | grepl("^gDNA", IID)) %>% 
-               select(contains("ID"))
+               dplyr::select(contains("ID"))
 head(removed)
-pca.eigenvec <- filter(pca.eigenvec, IID != "A_103" & !grepl("^genome", IID) & 
+pca.eigenvec <- dplyr::filter(pca.eigenvec, IID != "A_103" & !grepl("^genome", IID) & 
                          !grepl("^ver", IID) & !grepl("^gDNA", IID))
 ```
 
@@ -71,8 +71,8 @@ p1 <- ggplot(pca.eigenvec, aes(PC5)) + geom_histogram()
 p2 <- ggplot(pca.eigenvec, aes(PC10)) + geom_histogram()
 ggarrange(p1, p2)
 
-pca.eigenvec %>% filter(PC5 > 1) %>% select(contains("ID"))
-pca.eigenvec %>% filter(PC10 < -0.5) %>% select(contains("ID"))
+pca.eigenvec %>% dplyr::filter(PC5 > 1) %>% dplyr::select(contains("ID"))
+pca.eigenvec %>% dplyr::filter(PC10 < -0.5) %>% dplyr::select(contains("ID"))
   
 pca.eigenvec <- pca.eigenvec %>% filter(PC5 < 1 & PC10 > -0.5)
 
@@ -137,8 +137,8 @@ ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
 We can plot our samples with the centroid of the HapMap pops indicated.
 
 ```{r hapmap plus adapt}
-meanshap <- filter(pca.eigenvec, database != "ADAPT") %>% group_by(database) %>% 
-                select(contains("PC")) %>% summarise_all(funs(mean))
+meanshap <- dplyr::filter(pca.eigenvec, database != "ADAPT") %>% dplyr::group_by(database) %>% 
+            dplyr::select(contains("PC")) %>% summarise_all(funs(mean))
 
 plothapsamp <- function(dat1, dat2, x1, y1)
 {
@@ -309,15 +309,16 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
 ```
 
 ```{r merging predictions}
-levels(test$continent) <- c("Africa", "America", "Asia", "Europe", "NEruope", "SEruope")
+levels(test$continent) <- c("Africa", "America", "Asia", "Europe", "SouthAsia", "NEruope", "SEruope")
 test[test$continent == 'Europe', 54] <- test.eur$continent
 test$Eur <- NULL
 test <- droplevels(test)
+summary(test$continent)
 ```
 
 ## Combining datasets
 
-```{r read facedata, message=FALSE}
+```{r read facedata, message=FALSE, warning=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/PCA", sep = ""))
