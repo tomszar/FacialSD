@@ -45,7 +45,7 @@ done
 echo "Now I'll concatenate the vcf files, from chr1 to chr22"
 
 inputnames=$(ls chr[0-9]*.recode.vcf)
-vcf-concat $inputnames | gzip -c > allmerged.vcf.gz
+vcf-concat $inputnames | gzip -c > 1000Gmerged.vcf.gz
 
 echo "Now will convert the vcf file into a plink (bed, bim, fam) file"
 read -p "Do you need to download plink (y/n)?: " answer
@@ -58,12 +58,13 @@ case ${answer:0:1} in
     * )
     ;;
 esac
-./plink --vcf allmerged.vcf.gz --make-bed --out allmerged
+./plink --vcf 1000Gmerged.vcf.gz --make-bed --out 1000Gmerged
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-outpath=$echo$(echo $DIR | cut -d '/' -f 1-8)/Results/MergeGeno
-files=$(ls allmerged.*)
+outpath=$echo$(echo $DIR | cut -d '/' -f 1-8)/Results/MergeGeno/Merge1000G
+files=$(ls 1000Gmerged.*)
 cp $files $outpath
+cp integrated_call_samples_v3.20130502.ALL.panel $outpath
 
 echo "Now I'll merge the 1000Genomes data with your samples"
 cd $outpath
@@ -77,9 +78,7 @@ case ${answer:0:1} in
     * )
     ;;
 esac
-./plink --bfile CleanMerged --bmerge allmerged --make-bed --out All1000G
-#Remove two triallelic snps 
-./plink --bfile CleanMerged --exclude All1000G-merge.missnp --make-bed --out CleanMerged
-./plink --bfile allmerged --exclude All1000G-merge.missnp --make-bed --out allmerged
-#Try again
-./plink --bfile CleanMerged --bmerge allmerged --make-bed --out All1000G
+./plink --bfile CleanMerged --bmerge 1000Gmerged --make-bed --out Merge1000Gsamples
+#There are two snps with flip strand
+./plink --bfile 1000Gmerged --flip Merge1000Gsamples-merge.missnp --make-bed --out 1000Gmergedflip
+./plink --bfile CleanMerged --bmerge 1000Gmergedflip --make-bed --out Merge1000Gsamples
