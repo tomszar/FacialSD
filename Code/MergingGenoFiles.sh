@@ -1,5 +1,6 @@
 #Navigate to Results Folder
-cd ../Results/MergeGeno 
+cd ../Results/MergeGeno/MergeSamples/
+pwd
 
 #First attempt to merge files. Returns temp1.missnp
 ./plink --merge-list FirstMergeList.txt --out temp1
@@ -25,5 +26,9 @@ for temp in $temps
 do
 	rm $temp.*	
 done
+
+#Copy final file to Merge1000G to be merged with the 1000Genomes samples
+export=$(ls CleanMerged.*)
+cp $export ../Merge1000G/
 
 #rm -rf Originals
