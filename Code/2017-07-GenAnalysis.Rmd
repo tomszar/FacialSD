@@ -6,12 +6,12 @@ output:
     fig_width: 10
 ---
 
-In this script we will look at some descriptive statistics from the genetic PCA, previously done in Plink.
+In this script we will look at some descriptive statistics from the genetic PCA, previously done in Plink, and Admixture analysis.
 The steps to create the genetic PCA were as following:
 
 - Remove of missing genotype data.
 - LD pruning using a window size of 10kb and a VIF of 2.
-- Only HapMap samples were used to create the PCA, and our samples were projected there.
+- Only 1000Genomes samples were used to create the PCA, and our samples were projected there.
 - A total of 50 PCs were extracted
 
 ## Preliminaries
@@ -24,24 +24,41 @@ library(dplyr)
 library(GGally)
 library(ggpubr)
 library(caret)
+library(pophelper)
+
 setwd('..')
 path <- getwd()
-setwd(paste(path, "/Results/GenClustering", sep = ""))
-pca.eigenval <- read.csv("Clus.eigenval", sep = "", header = F)
-pca.eigenvec <- read.csv("Clus.eigenvec", sep = "", header = F)
+setwd(paste(path, "/Results/GenPCA", sep = ""))
+pca.eigenval <- read.csv("PCA.eigenval", sep = "", header = F)
+pca.eigenvec <- read.csv("PCA.eigenvec", sep = "", header = F)
 PCnames      <- sprintf("PC%s",seq(1:50))
 colnames(pca.eigenvec) <- c("FID", "IID", PCnames)
+
+setwd(paste(path, "/Results/MergeGeno/Merge1000G", sep = ""))
+pops <- read.csv("integrated_call_samples_v3.20130502.ALL.panel", sep = "")
+colnames(pops)[1] <- "IID"
+
+setwd(paste(path, "/Results/Admixture", sep = ""))
+admix <- readQ("Merge1000Gsamples.6.Q")
+
 ```
 
 ## Data cleaning
 
-Creating a new column to plot hapmap pops against our samples more easily.
+Creating a new column to plot 1000Genome pops against our samples more easily.
 
 ```{r new column}
+pca.eigenvec$FID <- as.character(pca.eigenvec$FID)
+for(i in 1:nrow(pca.eigenvec)){
+  if(pca.eigenvec$IID[i] %in% pops$IID){
+    ind <- match(pca.eigenvec$IID[i], pops$IID)
+    pca.eigenvec$FID[i] <- as.character(pops$super_pop[ind])
+  }
+}
+pca.eigenvec$FID <- as.factor(pca.eigenvec$FID)
 pca.eigenvec$database <- pca.eigenvec$FID 
-pca.eigenvec$database[!(pca.eigenvec$FID == "ASW" | pca.eigenvec$FID == "CEU" | pca.eigenvec$FID == "CHB" | pca.eigenvec$FID == "CHD" | 
-                          pca.eigenvec$FID == "GIH" | pca.eigenvec$FID == "JPT" | pca.eigenvec$FID == "LWK" | pca.eigenvec$FID == "MEX" |
-                          pca.eigenvec$FID == "MKK" | pca.eigenvec$FID == "TSI" | pca.eigenvec$FID == "YRI")] <- "ADAPT"
+pca.eigenvec$database[!(pca.eigenvec$FID %in% pops$super_pop)] <- "ADAPT"
+pca.eigenvec$database <- droplevels(pca.eigenvec$database)
 ```
 
 Because plink output is a normalized PCA, we de-normalized the PCA by multiplying the eigenvectors by the standard deviation.
@@ -97,23 +114,39 @@ barplot(c(as.matrix(pca.eigenval)), names.arg=PCnames,
        col = "steelblue")
 ```
 
-Looking at the HapMap populations: 
+Looking at the 1000Genomes populations: 
 
-|POP | Description                 
-|----|-----------------------------------------------------------------
-|ASW | African ancestry in Southwest USA
-|CEU | Utah residents with Northern and Western European ancestry from the CEPH collection
-|CHB | Han Chinese in Beijing, China
-|CHD | Chinese in Metropolitan Denver, Colorado
-|GIH | Gujarati Indians in Houston, Texas
-|JPT | Japanese in Tokyo, Japan
-|LWK | Luhya in Webuye, Kenya
-|MXL | Mexican ancestry in Los Angeles, California
-|MKK | Maasai in Kinyawa, Kenya
-|TSI | Toscani in Italia
-|YRI | Yoruba in Ibadan, Nigeria 
+|POP | SUPER POP | Description                 
+|----|-----------|------------------------------------------------------
+|FIN | EUR       | Finnish in Finland 	
+|CHS | EAS       | Han Chinese South
+|GBR | EUR       | British from England and Scotland
+|PUR | AMR       | Puerto Rican in Puerto Rico
+|CLM | AMR       | Colombian in Medellin, Colombia
+|MXL | AMR       | Mexican Ancestry in Los Angeles, California
+|TSI | EUR       | Toscani in Italia
+|LWK | AFR       | Luhya in Webuye, Kenya
+|JPT | EAS       | Japanese in Tokyo, Japan
+|IBS | EUR       | Iberian populations in Spain
+|PEL | AMR       | Peruvian in Lima, Peru
+|CDX | EAS       | Chinese Dai in Xishuangbanna, China
+|YRI | AFR       | Yoruba in Ibadan, Nigeria 
+|KHV | EAS       | Kinh in Ho Chi Minh City, Vietnam
+|ASW | AFR       | African ancestry in Southwest USA
+|ACB | AFR       | African Caribbean in Barbados
+|CHB | EAS       | Han Chinese in Beijing, China
+|GIH | SAS       | Gujarati Indians in Houston, Texas
+|GWD | AFR       | Gambian in Western Division, The Gambia
+|PJL | SAS       | Punjabi in Lahore,Pakistan
+|MSL | AFR       | Mende in Sierra Leone
+|BEB | SAS       | Bengali in Bangladesh
+|ESN | AFR       | Esan in Nigeria
+|STU | SAS       | Sri Lankan Tamil in the UK
+|ITU | SAS       | Indian Telugu in the UK
+|CEU | EUR       | Utah residents with Northern and Western European ancestry from the CEPH collection
 
-```{r hapmap}
+
+```{r 1000genomes}
 plothap <- function(dat, x1, y1)
 {
   p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "database")) +
@@ -177,7 +210,7 @@ plothapgroup <- function(dat1, dat2, x1, y1)
   return(p1)
 }
 
-eurhap  <- filter(meanshap, database == "CEU" | database == "TSI")
+eurhap  <- filter(meanshap, database == "EUR")
 eursamp <- filter(pca.eigenvec, FID == "Italian" | FID == "Polish" | FID == "Irish" | 
                             FID == "Portuguese")
 
@@ -194,6 +227,18 @@ ggarrange(p1, p2, p3, p4, p5, p6,
           common.legend = TRUE, legend = "right",
           align = "v")
 ```
+
+Finally, let's take a look at the admixture analysis
+
+```{r admixture}
+#This function exports the graph. It is possible to show it here?
+#plotQ(admix,showindlab=T,
+#     ordergrp=T,showlegend=T,
+#      showtitle=T,showsubtitle=T,
+#      height=1.6,indlabsize=2.3,indlabheight=0.08,indlabspacer=-1,
+#      barbordercolour="white",barbordersize=0,outputfilename="plotq",imgtype="png")
+```
+
 
 ## Clustering
 
