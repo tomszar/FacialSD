@@ -40,25 +40,38 @@ colnames(pops)[1] <- "IID"
 
 setwd(paste(path, "/Results/Admixture", sep = ""))
 admix <- readQ("Merge1000Gsamples.6.Q")
+#Removing duplicates
+admix[[1]]   <- admix[[1]][!duplicated(pca.eigenvec$IID), ] 
+pca.eigenvec <- pca.eigenvec[!duplicated(pca.eigenvec$IID), ] 
 
+rownames(admix[[1]]) <- pca.eigenvec$IID
 ```
 
 ## Data cleaning
 
-Creating a new column to plot 1000Genome pops against our samples more easily.
+Creating new columns to plot 1000Genomes pops against our samples more easily.
 
 ```{r new column}
 pca.eigenvec$FID <- as.character(pca.eigenvec$FID)
 for(i in 1:nrow(pca.eigenvec)){
   if(pca.eigenvec$IID[i] %in% pops$IID){
     ind <- match(pca.eigenvec$IID[i], pops$IID)
-    pca.eigenvec$FID[i] <- as.character(pops$super_pop[ind])
+    pca.eigenvec$FID[i] <- as.character(pops$pop[ind])
   }
 }
 pca.eigenvec$FID <- as.factor(pca.eigenvec$FID)
-pca.eigenvec$database <- pca.eigenvec$FID 
-pca.eigenvec$database[!(pca.eigenvec$FID %in% pops$super_pop)] <- "ADAPT"
-pca.eigenvec$database <- droplevels(pca.eigenvec$database)
+pca.eigenvec$pop <- pca.eigenvec$FID 
+pca.eigenvec$pop[!(pca.eigenvec$FID %in% pops$pop)] <- "ADAPT"
+pca.eigenvec$pop <- droplevels(pca.eigenvec$pop)
+
+pca.eigenvec$super_pop <- as.character(pca.eigenvec$pop)
+for(i in 1:nrow(pca.eigenvec)){
+  if(pca.eigenvec$IID[i] %in% pops$IID){
+    ind <- match(pca.eigenvec$IID[i], pops$IID)
+    pca.eigenvec$super_pop[i] <- as.character(pops$super_pop[ind])
+  }
+}
+pca.eigenvec$super_pop <- as.factor(pca.eigenvec$super_pop)
 ```
 
 Because plink output is a normalized PCA, we de-normalized the PCA by multiplying the eigenvectors by the standard deviation.
@@ -67,41 +80,12 @@ Because plink output is a normalized PCA, we de-normalized the PCA by multiplyin
 pca.eigenvec[,3:52] <- t(c(as.matrix(pca.eigenval)) * t(as.matrix(pca.eigenvec[,3:52])))
 ```
 
-I'll remove samples that contain the word genome (surely those are not in the face files), the word ver (those are controls from the axiom arrays), the word gDNA, as well as those with the name A_103. 
-I've also seen that some of those are outliers in some PCs
-
-```{r removing samples}
-removed <- dplyr::filter(pca.eigenvec, IID == "A_103" | grepl("^genome", IID) | 
-                    grepl("^ver", IID) | grepl("^gDNA", IID)) %>% 
-               dplyr::select(contains("ID"))
-head(removed)
-pca.eigenvec <- dplyr::filter(pca.eigenvec, IID != "A_103" & !grepl("^genome", IID) & 
-                         !grepl("^ver", IID) & !grepl("^gDNA", IID))
-```
-
-I removed a total of `r nrow(removed)` samples.
-We also have some outliers in PC5, and PC10, clear from the plots of their distributions.
-Probably there are also in some other lower PCs.
-
-```{r removing outliers, fig.height=4, fig.width=10, message=FALSE}
-p1 <- ggplot(pca.eigenvec, aes(PC5)) + geom_histogram()
-p2 <- ggplot(pca.eigenvec, aes(PC10)) + geom_histogram()
-ggarrange(p1, p2)
-
-pca.eigenvec %>% dplyr::filter(PC5 > 1) %>% dplyr::select(contains("ID"))
-pca.eigenvec %>% dplyr::filter(PC10 < -0.5) %>% dplyr::select(contains("ID"))
-  
-pca.eigenvec <- pca.eigenvec %>% filter(PC5 < 1 & PC10 > -0.5)
-
-```
-
-
 ## Descriptive and exploratory analyses
 
 Some summary stats
 
 ```{r summary}
-summary(pca.eigenvec[,c(1,2,53)])
+summary(pca.eigenvec[,c(1,2,53,54)])
 ```
  
 PCA screeplot
@@ -149,18 +133,18 @@ Looking at the 1000Genomes populations:
 ```{r 1000genomes}
 plothap <- function(dat, x1, y1)
 {
-  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "database")) +
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "super_pop")) +
             geom_point(alpha = 0.3, size = 2) + theme_pubr()
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
 }
 
-p1 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC1", "PC2")
-p2 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC3", "PC4")
-p3 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC5", "PC6")
-p4 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC7", "PC8")
-p5 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC9", "PC10")
-p6 <- plothap(filter(pca.eigenvec, database != "ADAPT"), "PC11", "PC12")
+p1 <- plothap(filter(pca.eigenvec, super_pop != "ADAPT"), "PC1", "PC2")
+p2 <- plothap(filter(pca.eigenvec, super_pop != "ADAPT"), "PC3", "PC4")
+p3 <- plothap(filter(pca.eigenvec, super_pop != "ADAPT"), "PC5", "PC6")
+p4 <- plothap(filter(pca.eigenvec, super_pop != "ADAPT"), "PC7", "PC8")
+p5 <- plothap(filter(pca.eigenvec, super_pop != "ADAPT"), "PC9", "PC10")
+p6 <- plothap(filter(pca.eigenvec, super_pop != "ADAPT"), "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
           common.legend = TRUE, legend = "right", 
@@ -170,26 +154,26 @@ ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
 We can plot our samples with the centroid of the HapMap pops indicated.
 
 ```{r hapmap plus adapt}
-meanshap <- dplyr::filter(pca.eigenvec, database != "ADAPT") %>% dplyr::group_by(database) %>% 
+meanshap <- dplyr::filter(pca.eigenvec, pop != "ADAPT") %>% dplyr::group_by(pop, super_pop) %>% 
             dplyr::select(contains("PC")) %>% summarise_all(funs(mean))
 
 plothapsamp <- function(dat1, dat2, x1, y1)
 {
-  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
+  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "pop")) + 
           geom_point(data = dat2, 
                      aes_string(x = x1, y = y1), alpha = 0.3) + 
-          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.4) + 
+          geom_label(aes(fill = pop), colour = "white", fontface = "bold", alpha = 0.4) + 
           theme_pubr(legend = "none")
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
 }
   
-p1 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC1", "PC2")
-p2 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC3", "PC4")
-p3 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC5", "PC6")
-p4 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC7", "PC8")
-p5 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC9", "PC10")
-p6 <- plothapsamp(meanshap, filter(pca.eigenvec, database == "ADAPT"), "PC11", "PC12")
+p1 <- plothapsamp(meanshap, filter(pca.eigenvec, pop == "ADAPT"), "PC1", "PC2")
+p2 <- plothapsamp(meanshap, filter(pca.eigenvec, pop == "ADAPT"), "PC3", "PC4")
+p3 <- plothapsamp(meanshap, filter(pca.eigenvec, pop == "ADAPT"), "PC5", "PC6")
+p4 <- plothapsamp(meanshap, filter(pca.eigenvec, pop == "ADAPT"), "PC7", "PC8")
+p5 <- plothapsamp(meanshap, filter(pca.eigenvec, pop == "ADAPT"), "PC9", "PC10")
+p6 <- plothapsamp(meanshap, filter(pca.eigenvec, pop == "ADAPT"), "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6,
           nrow = 3, ncol = 2,
@@ -197,22 +181,22 @@ ggarrange(p1, p2, p3, p4, p5, p6,
 ```
 
 We can also plot our Irish, Polish, Italian, and Portuguese samples.
-Clearly there is a north-south structure in Europe, capture aslso by our samples.
+Clearly there is a north-south structure in Europe, captured also by our samples.
 
 ```{r samples w/pop}
 plothapgroup <- function(dat1, dat2, x1, y1)
 {
-  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "database")) + 
+  p1 <- ggplot(dat1, aes_string(x = x1, y = y1, label = "pop")) + 
           geom_point(data = dat2, aes_string(x = x1, y = y1, color = "FID"), alpha = 0.5) + 
-          geom_label(aes(fill = database), colour = "white", fontface = "bold", alpha = 0.5) +
+          geom_label(aes(fill = pop), colour = "white", fontface = "bold", alpha = 0.5) +
           theme_pubr()
   p1 <- ggpar(p1, palette = "jama")
   return(p1)
 }
 
-eurhap  <- filter(meanshap, database == "EUR")
+eurhap  <- filter(meanshap, super_pop == "EUR")
 eursamp <- filter(pca.eigenvec, FID == "Italian" | FID == "Polish" | FID == "Irish" | 
-                            FID == "Portuguese")
+                                FID == "Portuguese")
 
 p1 <- plothapgroup(eurhap, eursamp, "PC1", "PC2")
 p2 <- plothapgroup(eurhap, eursamp, "PC3", "PC4")
@@ -228,80 +212,42 @@ ggarrange(p1, p2, p3, p4, p5, p6,
           align = "v")
 ```
 
-Finally, let's take a look at the admixture analysis
+Finally, let's take a look at the admixture analysis.
+Based on visual inspection, these are the approximate cluster by geography associations
+
+|Cluster | POP|
+|--------|----|
+|1       | NEU|
+|2       | EAS|
+|3       | SAS|
+|4       | SEU|
+|5       | AMR|
+|6       | AFR|
 
 ```{r admixture}
+groups <- pca.eigenvec[,c(53,54)]
+groups <- data.frame(lapply(groups, as.character), stringsAsFactors=FALSE)
 #This function exports the graph. It is possible to show it here?
-#plotQ(admix,showindlab=T,
-#     ordergrp=T,showlegend=T,
-#      showtitle=T,showsubtitle=T,
-#      height=1.6,indlabsize=2.3,indlabheight=0.08,indlabspacer=-1,
-#      barbordercolour="white",barbordersize=0,outputfilename="plotq",imgtype="png")
+#p1 <- plotQ(admix, ordergrp=T, showlegend=T, grplab=groups, 
+#            barbordercolour="white", barbordersize=0, outputfilename="plotq",imgtype="png")
 ```
 
 
 ## Clustering
 
-For an initial clustering attempt I'll group the HapMap populations into continents, as shown in the table:
-
-POP | Continent 
-----|------------
-ASW | Africa
-CEU | Europe
-CHB | Asia
-CHD | Asia
-GIH | SouthAsia
-JPT | Asia
-LWK | Africa
-MXL | American
-MKK | Africa
-TSI | Europe
-YRI | Africa 
-
-```{r continent}
-pca.eigenvec$continent[(pca.eigenvec$database == "CEU" | pca.eigenvec$database == "TSI")] <- "Europe"
-
-pca.eigenvec$continent[(pca.eigenvec$database == "ASW" | pca.eigenvec$database == "LWK" |
-                        pca.eigenvec$database == "MKK" | pca.eigenvec$database == "YRI")] <- "Africa"
-
-pca.eigenvec$continent[(pca.eigenvec$database == "CHB" | pca.eigenvec$database == "CHD" |
-                        pca.eigenvec$database == "JPT")]                                  <- "Asia"
-
-pca.eigenvec$continent[pca.eigenvec$database == "MEX"] <- "America"
-pca.eigenvec$continent[pca.eigenvec$database == "GIH"] <- "SouthAsia"
-```
-
-If we look at scatter plots of the HapMap samples with the continent variable.
-
-```{r continent plots, fig.height=8}
-plotcont <- function(dat, x1, y1)
-{
-  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "continent")) +
-            geom_point(alpha = 0.3, size = 2) + theme_pubr()
-  p1 <- ggpar(p1, palette = "jama")
-  return(p1)
-}
-
-p1 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC1", "PC2")
-p2 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC3", "PC4")
-p3 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC5", "PC6")
-p4 <- plotcont(filter(pca.eigenvec, database != "ADAPT"), "PC7", "PC8")
-
-ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
-          common.legend = TRUE, legend = "right", 
-          align = "v")
-```
-
-I'll use the HapMap samples as training, with a 5-fold cross-validation, and predict the values of our samples.
+For the clustering approach, we'll use the super_pop variables from 1000Genomes.
+I'll use the reference samples as training, with a 5-fold cross-validation, and predict the values of our samples.
 
 ```{r SVM clustering continent, message=FALSE}
 set.seed(10)
-train <- pca.eigenvec %>% filter(database != "ADAPT")
-test  <- pca.eigenvec %>% filter(database == "ADAPT") 
+train <- pca.eigenvec %>% filter(super_pop != "ADAPT")
+train <- droplevels(train)
+test  <- pca.eigenvec %>% filter(super_pop == "ADAPT") 
+test  <- droplevels(test)
 
 # 5-fold repeated cross-validation
 fitControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
-svm.fit    <- train(continent ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRadial', 
+svm.fit    <- train(super_pop ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRadial', 
                      trControl = fitControl, data = train)
 
 svm.fit
@@ -312,6 +258,14 @@ summary(test$continent)
 Scatter plots of the predicted continent groups 
 
 ```{r prediceted plots, fig.height=8}
+plotcont <- function(dat, x1, y1)
+{
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "continent")) +
+            geom_point(alpha = 0.3, size = 2) + theme_pubr()
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
 p1 <- plotcont(test, "PC1", "PC2")
 p2 <- plotcont(test, "PC3", "PC4")
 p3 <- plotcont(test, "PC5", "PC6")
@@ -326,12 +280,13 @@ The next step will be to create a clustering of suthern versus northern european
 We'll double check our clustering with the samples that we have population information (Irish, Polish, Italian, and Portuguese).
 
 ```{r svm cluster europe}
-pca.eigenvec$Eur[pca.eigenvec$database == "CEU"] <- "NEruope"
-pca.eigenvec$Eur[pca.eigenvec$database == "TSI"] <- "SEruope"
+pca.eigenvec$Eur[pca.eigenvec$pop == "CEU" | pca.eigenvec$pop == "FIN" | 
+                 pca.eigenvec$pop == "GBR"] <- "NEU"
+pca.eigenvec$Eur[pca.eigenvec$pop == "TSI" | pca.eigenvec$pop == "IBS"] <- "SEU"
 
 set.seed(10)
-train.eur <- pca.eigenvec %>% filter(database == "CEU" | database == "TSI")
-test.eur  <- filter(test, continent == "Europe")
+train.eur <- pca.eigenvec %>% filter(super_pop == "EUR")
+test.eur  <- filter(test, continent == "EUR")
 
 # 5-fold repeated cross-validation
 fitControl  <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
@@ -354,12 +309,21 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
 ```
 
 ```{r merging predictions}
-levels(test$continent) <- c("Africa", "America", "Asia", "Europe", "SouthAsia", "NEruope", "SEruope")
-test[test$continent == 'Europe', 54] <- test.eur$continent
+levels(test$continent) <- c("AFR", "AMR", "EAS", "EUR", "SAS", "NEU", "SEU")
+test$continent[test$continent == 'EUR'] <- test.eur$continent
 test$Eur <- NULL
 test <- droplevels(test)
 summary(test$continent)
 ```
+
+If we look at the clustering and the admixture proportions, we see this
+
+```{r clusadmixture}
+testadmix <- admix[[1]][rownames(admix[[1]]) %in% test$IID,]
+meanstest <- testadmix %>% dplyr::group_by(test$continent) %>% summarise_all(funs(mean))
+meanstest
+```
+
 
 ## Combining datasets
 
@@ -373,9 +337,9 @@ coeffs   <- read.csv("coeffs.csv")
 ```{r merging}
 colnames(coeffs)[1] <- "IID"
 total      <- merge(test, coeffs, by = "IID") 
-FacePCA    <- total[,59:145]
+FacePCA    <- total[,60:146]
 GenPCA     <- total[,3:52]
-Covariates <- total[,c(1,2,55:58,54)]
+Covariates <- total[,c(1,2,56:59,54,55)]
 
 PCnames <- sprintf("PC%s",seq(1:87))
 colnames(FacePCA) <- PCnames
