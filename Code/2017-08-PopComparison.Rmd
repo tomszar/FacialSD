@@ -94,21 +94,21 @@ plotsexes <- function(PCA, cont, x1, y1)
   return(p1)
 }
 
-p1 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Africa", "PC1", "PC2")
-p2 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Africa", "PC3", "PC4")
-p3 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "America", "PC1", "PC2")
-p4 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "America", "PC3", "PC4")
-p5 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Asia", "PC1", "PC2")
-p6 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "Asia", "PC3", "PC4")
-p7 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SouthAsia", "PC1", "PC2")
-p8 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SouthAsia", "PC3", "PC4")
-p9 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC1", "PC2")
-p10 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEruope", "PC3", "PC4")
-p11 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC1", "PC2")
-p12 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEruope", "PC3", "PC4")
+p1 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AFR", "PC1", "PC2")
+p2 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AFR", "PC3", "PC4")
+p3 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AMR", "PC1", "PC2")
+p4 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AMR", "PC3", "PC4")
+p5 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "EAS", "PC1", "PC2")
+p6 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "EAS", "PC3", "PC4")
+p7 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SAS", "PC1", "PC2")
+p8 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SAS", "PC3", "PC4")
+p9 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEU", "PC1", "PC2")
+p10 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEU", "PC3", "PC4")
+p11 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEU", "PC1", "PC2")
+p12 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEU", "PC3", "PC4")
 
 ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, 
-          ncol = 2, nrow = 5,
+          ncol = 2, nrow = 6,
           common.legend = TRUE, legend = "bottom", 
           align = "v")
 ```
@@ -128,10 +128,13 @@ As shown, both continent and Sex (and their interaction) are significant predict
 fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
 summary(fit)
 
-mahamatrix <- vegdist(MergedDat[[2]], method = "mahalanobis")
-fit2 <- betadisper(mahamatrix, MergedDat[[1]]$continent)
-plot(fit2)
-permutest(fit2, pairwise = T)
+fitsub <- manova(as.matrix(MergedDat[[2]][,1:10]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
+summary(fitsub)
+
+#mahamatrix <- vegdist(MergedDat[[2]], method = "mahalanobis")
+#fit2 <- betadisper(mahamatrix, MergedDat[[1]]$continent)
+#plot(fit2)
+#permutest(fit2, pairwise = T)
 
 #fit2 <- adonis(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent, permutations = 999, 
 #               method = "mahalanobis")
@@ -140,7 +143,7 @@ permutest(fit2, pairwise = T)
 
 We can also compute pairwise mahalanobis distance as a measure of effect size.
 This is preferred from an Euclidean distance, because the within-group variation is taken into account in the mahalanobis distance.
-As shown in the dendogram, Asia is the least similar groups overall.
+As shown in the dendogram, EAS is the least similar group overall.
 
 ```{r mahal continent}
 madistcont <- pairwise.mahalanobis(MergedDat[[2]], MergedDat[[1]]$continent)
@@ -216,13 +219,14 @@ totalSD[,1] <- levels(consensus$continent)
 colnames(totalSD) <- c("continent", colnames(MergedDat[[2]]))
 
 row <- 1
-for(i in seq(1, 10, 2)){
+for(i in seq(1, 12, 2)){
   totalSD[row, 2:88] <- consensus[i, 3:89] - consensus[i+1, 3:89] 
   row = row + 1
 }
 
 #ALLOMETRIC SD
-fit <- lm(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex + MergedDat[[1]]$Height * MergedDat[[1]]$continent)
+fit <- lm(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex + MergedDat[[1]]$Height *    
+                                      MergedDat[[1]]$continent)
 summary(manova(fit))
 alloSD <- totalSD
 for(cont in 1:length(levels(MergedDat[[1]]$continent)))
@@ -300,22 +304,22 @@ ma
 plot(hclust(as.dist(ma)))
 
 #Not working
-nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
-pvals <- 
-  for(i in 1:(nrow(nulls)))
-  {
-    
-  }
-sum(ma[1,2] < nulls[1,])/1000
-sum(ma[1,3] < nulls[2,])/1000
-sum(ma[1,4] < nulls[3,])/1000
-sum(ma[1,5] < nulls[4,])/1000
-sum(ma[2,3] < nulls[5,])/1000
-sum(ma[2,4] < nulls[6,])/1000
-sum(ma[2,5] < nulls[7,])/1000
-sum(ma[3,4] < nulls[8,])/1000
-sum(ma[3,5] < nulls[9,])/1000
-sum(ma[4,5] < nulls[10,])/1000
+#nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
+#pvals <- 
+#  for(i in 1:(nrow(nulls)))
+#  {
+#    
+#  }
+#sum(ma[1,2] < nulls[1,])/1000
+#sum(ma[1,3] < nulls[2,])/1000
+#sum(ma[1,4] < nulls[3,])/1000
+#sum(ma[1,5] < nulls[4,])/1000
+#sum(ma[2,3] < nulls[5,])/1000
+#sum(ma[2,4] < nulls[6,])/1000
+#sum(ma[2,5] < nulls[7,])/1000
+#sum(ma[3,4] < nulls[8,])/1000
+#sum(ma[3,5] < nulls[9,])/1000
+#sum(ma[4,5] < nulls[10,])/1000
 ```
 
 We can compute the angle between the total an allometric SD for each group.
