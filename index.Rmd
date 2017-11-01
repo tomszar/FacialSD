@@ -7,6 +7,7 @@ This is the main page of the facial sexual dimorphism analysis.
 The links below will take you to the proper analysis.
 Each link is in sequential order, many of them building on the output from the previous scripts.
 
+- Here you can see the generation of the [Face PCA](Code/2017-11-FacePCA.html). 
 - Here you can see some [descriptive statistics](Code/2017-07-DescriptiveStats.html) from the covariates and Face PCA.
 - Here is the [hypothesis testing](Code/2017-07-HTesting.html) on the effect of sex and height on the face, using the whole dataset.
 This is also the preliminary analysis on the allometric and non-allometric decomposition.
