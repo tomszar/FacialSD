@@ -5,7 +5,6 @@ output:
 ---
 
 In this section we will look at descriptive statistics from covariates, and from the face PCA.
-Note that the face PCA was already produced in the matlab jupyter notebook, so any adjustment to the face PCA must be done there.
 
 ## Preliminaries
 
@@ -20,7 +19,7 @@ library(psych)
 library(ggjoy)
 setwd('..')
 path <- getwd()
-setwd(paste(path, "/Results/PCA", sep = ""))
+setwd(paste(path, "/Results/FacePCA", sep = ""))
 coeffs   <- read.csv("coeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 eigenval <- read.csv("eigenvalues.csv", header=F)
@@ -47,19 +46,19 @@ After cleaning, we end up with `r nrow(coeffs)` individuals
 We can look at summary statistics
 
 ```{r summary}
-summary(coeffs[,2:5])
+summary(coeffs[,2:6])
 ```
 
 As well as summary statistics grouped by sex, where we can see differences in height and weight.
 
 ```{r summary by sex}
-describeBy(coeffs[,3:5], coeffs$Sex)
+describeBy(coeffs[,3:6], coeffs$Sex)
 ```
 
 We can also explore some correlograms
 
 ```{r correlogram, fig.height = 8, fig.width = 12, fig.align = "center", message=FALSE}
-p1 <- ggpairs(coeffs, columns = 2:7, ggplot2::aes(colour=Sex, alpha = 0.1), 
+p1 <- ggpairs(coeffs, columns = 2:8, ggplot2::aes(colour=Sex, alpha = 0.1), 
               lower = list(continuous = "smooth")) + theme_pubr()
 p1
 ```
