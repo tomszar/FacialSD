@@ -1,9 +1,19 @@
 ---
-title: Content
+title: Evolution of Human Facial Sexual Dimorphism
 output: html_document
 ---
 
-This is the main page of the facial sexual dimorphism analysis.
+## Summary
+
+This project aims to test for differences in patterns of facial sexual dimorphism across populations.
+The workflow can be summarized as follows:
+- Obtain the 3D landmark data from participants' faces and run a standard geometric morphometrics approach, that involves generalized procrustes analysis, PCA, and retention of PCs that explain 90% of the variance.
+- Decompose facial sexual dimorphism (FSD) in allometric and non-allometric components.
+- Generate different groupings based on ancestry analysis from DNA.
+- Compare pattern of FSD between populations.
+
+## Content
+
 The links below will take you to the proper analysis.
 Each link is in sequential order, many of them building on the output from the previous scripts.
 
