@@ -85,12 +85,15 @@ Plot1Face <- function(face1, facets, colormap=NULL, title=NULL)
     myPlot <- plot_ly(
       x = rface1[,1], y = rface1[,2], z = rface1[,3],
       i = facets[, 1]-1, j = facets[, 2]-1, k = facets[, 3]-1,
+      #color = colormap, 
+      cmax = 1, cmin = 0, 
       #colorscale = list(c(0, 'rgb(255, 0, 0)'),
       #                  c(0.5, 'rgb(0, 255, 0)'),
       #                  c(1, 'rgb(0, 0, 255)')),
       colors = colorRamp(c("yellow", "red", "black")), 
       intensity = colormap, opacity = 1,
       hoverinfo = "none",
+      flatshading = TRUE,
       type = "mesh3d"
     ) %>% 
       layout(scene = scene, title = title)
