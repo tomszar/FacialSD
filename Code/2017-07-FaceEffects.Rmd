@@ -21,7 +21,7 @@ library(tidyr)
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/FacePCA", sep = ""))
-coeffs   <- read.csv("coeffs.csv")
+coeffs   <- read.csv("cleancoeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 eigenval <- read.csv("eigenvalues.csv", header=F)
 means    <- read.csv("means.csv", header=F)
@@ -30,20 +30,6 @@ setwd(paste(path, "/Results/FSD", sep = ""))
 load("fitmodel.RData")
 vectors <- read.csv("vectors.csv", row.names = 1)
 ```
-
-## Data cleaning
-
-For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age).
-
-```{r data cleaning}
-coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
-coeffs = droplevels(coeffs)
-coeffs = na.omit(coeffs)
-dim(coeffs)
-head(coeffs[,1:8])
-```
-
-After cleaning, we end up with `r nrow(coeffs)` individuals
 
 ## Face plots
 
@@ -55,8 +41,10 @@ Each vector (total, allometric and non-allometric) is multiplied by a constant t
 fsdcoords <- data.frame(Tot.male = rep(0, nrow(means)), Tot.female = rep(0, nrow(means)), 
                         Allo.male = rep(0, nrow(means)), Allo.female = rep(0, nrow(means)),
                         Nallo.male = rep(0, nrow(means)), Nallo.female = rep(0, nrow(means)))
-fsdcoords[,c(1,3,5)] <- apply(as.matrix(vectors[3:5,] * -2) %*% t(as.matrix(eigenvec)), 1, function(x) x + t(means))
-fsdcoords[,c(2,4,6)] <- apply(as.matrix(vectors[3:5,] * 2) %*% t(as.matrix(eigenvec)), 1, function(x) x + t(means))
+fsdcoords[,c(1,3,5)] <- apply(as.matrix(vectors[3:5,] * -2) %*% t(as.matrix(eigenvec)), 1, 
+                              function(x) x + t(means))
+fsdcoords[,c(2,4,6)] <- apply(as.matrix(vectors[3:5,] * 2) %*% t(as.matrix(eigenvec)), 1, 
+                              function(x) x + t(means))
 averagecoords <- t(( colMeans(vectors[1:2,]) %*% t(as.matrix(eigenvec))) + t(means))
 ```
 
@@ -91,9 +79,9 @@ At this point, the colormap is not scaled to be comparable across plost, and the
 ```{r distplots}
 source("PlotFaces.R")
 Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Totdist") %>% 
-                                                          dplyr::select(dist))), title = "Total SD")
+                                                        dplyr::select(dist))), title = "Total SD")
 Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Allodist") %>% 
-                                                          dplyr::select(dist))), title = "Allometric SD")
+                                                        dplyr::select(dist))), title = "Allometric SD")
 Plot1Face(averagecoords, facets, colormap = c(as.matrix(eucdist %>% filter(type == "Nallodist") %>% 
-                                                          dplyr::select(dist))), title = "Non allometric SD")
+                                                    dplyr::select(dist))), title = "Non allometric SD")
 ```

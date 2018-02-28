@@ -29,29 +29,25 @@ setwd(paste(path, "/Results/MergedData", sep = ""))
 load("MergedDat.RData")
 ```
 
-## Data cleaning
-
-I'll remove participants without Male or Female self-identified sex.
-You can see the IID of the participants removed.
-
-```{r data cleaning}
-MergedDat[[1]]$IID[!(MergedDat[[1]]$Sex == "Male" | MergedDat[[1]]$Sex == "Female")]
-cleanSex       <- MergedDat[[1]]$Sex == "Male" | MergedDat[[1]]$Sex == "Female"
-MergedDat[[1]] <- dplyr::filter(MergedDat[[1]], cleanSex)
-MergedDat[[2]] <- dplyr::filter(MergedDat[[2]], cleanSex)
-MergedDat[[3]] <- dplyr::filter(MergedDat[[3]], cleanSex)
-MergedDat[[1]]$Sex <- droplevels(MergedDat[[1]]$Sex)
-```
-
-
 ## Descriptive and exploratory analyses
 
 ```{r summary}
-summary(MergedDat[[1]])
+summary(MergedDat[[1]][,3:9])
 summ <- MergedDat[[1]] %>% group_by(continent, Sex) %>% dplyr::select(Age, Height, Weight) %>% 
             summarise_all(funs(mean(. , na.rm = T), median(. , na.rm = T), sd(. , na.rm = T)))
 tbl_df(summ)
 ```
+
+```{r summary plots, message=F}
+p1 <- ggplot(MergedDat[[1]], aes(x = interaction(Sex, continent), y = Age)) + geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="")
+p2 <- ggplot(MergedDat[[1]], aes(x = interaction(Sex, continent), y = Height)) + geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="")
+p3 <- ggplot(MergedDat[[1]], aes(x = interaction(Sex, continent), y = Weight)) + geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="")
+ggarrange(p1, p2, p3)
+```
+
 
 We can compare the distributions of PCs for each geographical group using joy plots.
 Note that the PCA has been scaled.
@@ -113,7 +109,6 @@ ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12,
           align = "v")
 ```
 
-
 ## Hypohtesis testing
 
 It is clear from the scatter plots that Asian and South Asian samples differ substantially in their sample size. 
@@ -128,8 +123,8 @@ As shown, both continent and Sex (and their interaction) are significant predict
 fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
 summary(fit)
 
-fitsub <- manova(as.matrix(MergedDat[[2]][,1:10]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
-summary(fitsub)
+fit10 <- manova(as.matrix(MergedDat[[2]][,1:10]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
+summary(fit10)
 
 #mahamatrix <- vegdist(MergedDat[[2]], method = "mahalanobis")
 #fit2 <- betadisper(mahamatrix, MergedDat[[1]]$continent)
@@ -164,7 +159,6 @@ dimnames(madist$distance) <- list(levels(interaction(MergedDat[[1]]$continent, M
 madist$distance
 plot(hclust(as.dist(madist$distance)))
 ```
-
 
 ## Vectors comparison
 
@@ -225,13 +219,14 @@ for(i in seq(1, 12, 2)){
 }
 
 #ALLOMETRIC SD
-fit <- lm(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex + MergedDat[[1]]$Height *    
-                                      MergedDat[[1]]$continent)
+fit <- lm(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex + MergedDat[[1]]$Weight +
+            MergedDat[[1]]$Height * MergedDat[[1]]$continent)
 summary(manova(fit))
 alloSD <- totalSD
 for(cont in 1:length(levels(MergedDat[[1]]$continent)))
 {
-  pca  <- dplyr::filter(MergedDat[[2]], MergedDat[[1]]$continent == levels(MergedDat[[1]]$continent)[cont])
+  pca  <- dplyr::filter(MergedDat[[2]], 
+                        MergedDat[[1]]$continent == levels(MergedDat[[1]]$continent)[cont])
   covs <- dplyr::filter(MergedDat[[1]], continent == levels(MergedDat[[1]]$continent)[cont])
   fit  <- lm(as.matrix(pca) ~ covs$Sex + covs$Height)
   alloSD[cont,2:88] <- coef(fit)[3,] * (mean(covs[covs$Sex == 'Female',5], na.rm = T) - 
@@ -296,7 +291,7 @@ ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
 
 Angles between total SD vectors
 
-```{r}
+```{r angles, message=F}
 source("Distances.R")
 levels(consensus$continent)
 ma <- getPAngle(totalSD[,2:88])
@@ -304,29 +299,38 @@ ma
 plot(hclust(as.dist(ma)))
 
 #Not working
-#nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
+nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
 #pvals <- 
 #  for(i in 1:(nrow(nulls)))
 #  {
 #    
 #  }
-#sum(ma[1,2] < nulls[1,])/1000
-#sum(ma[1,3] < nulls[2,])/1000
-#sum(ma[1,4] < nulls[3,])/1000
-#sum(ma[1,5] < nulls[4,])/1000
-#sum(ma[2,3] < nulls[5,])/1000
-#sum(ma[2,4] < nulls[6,])/1000
-#sum(ma[2,5] < nulls[7,])/1000
-#sum(ma[3,4] < nulls[8,])/1000
-#sum(ma[3,5] < nulls[9,])/1000
-#sum(ma[4,5] < nulls[10,])/1000
+sum(ma[1,2] < nulls[1,])/1000
+sum(ma[1,3] < nulls[2,])/1000
+sum(ma[1,4] < nulls[3,])/1000
+sum(ma[1,5] < nulls[4,])/1000
+sum(ma[1,6] < nulls[5,])/1000
+sum(ma[2,3] < nulls[6,])/1000
+sum(ma[2,4] < nulls[7,])/1000
+sum(ma[2,5] < nulls[8,])/1000
+sum(ma[2,6] < nulls[9,])/1000
+sum(ma[3,4] < nulls[10,])/1000
+sum(ma[3,5] < nulls[11,])/1000
+sum(ma[3,6] < nulls[12,])/1000
+sum(ma[4,5] < nulls[13,])/1000
+sum(ma[4,6] < nulls[14,])/1000
+sum(ma[5,6] < nulls[15,])/1000
+
 ```
 
 We can compute the angle between the total an allometric SD for each group.
 
 ```{r total allo angle}
-ang <- getPAngle(rbind(totalSD[,2:88], alloSD[,2:88]))
-ang
+alloang <- getPAngle(alloSD[,2:88])
+alloang
+
+nalloang <- getPAngle(nonalloSD[,2:88])
+nalloang
 ```
 
 
@@ -338,3 +342,11 @@ apply(alloSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))
 apply(nonalloSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))
 ```
 
+## Saving
+
+```{r save}
+final      <- rbind(totalSD, alloSD, nonalloSD)
+final$type <- c(rep("Total", 6), rep("Allo", 6), rep("NonAllo", 6))
+setwd(paste(path, "/Results/FSD", sep = ""))
+write.csv(final, file="popvectors.csv", quote = F, row.names = F)
+```

@@ -1,0 +1,57 @@
+---
+title: Face effects comparisons
+output: 
+  html_document: default
+---
+
+In this script we will look at some interactive plots showing the effect of sex on the face across populations. 
+Remember to open the file in chrome.
+
+## Preliminaries
+
+We will load the necessary libraries, and datasets
+
+```{r libraries, warning=FALSE, message=FALSE}
+setwd('..')
+path <- getwd()
+setwd(paste(path, "/Results/MergedData", sep = ""))
+load("MergedDat.RData")
+setwd(paste(path, "/Results/FacePCA", sep = ""))
+eigenvec <- read.csv("eigenvectors.csv", header=F)
+eigenval <- read.csv("eigenvalues.csv", header=F)
+means    <- read.csv("means.csv", header=F)
+facets   <- read.csv("facets.csv", header=F)
+setwd(paste(path, "/Results/FSD", sep = ""))
+vectors <- read.csv("popvectors.csv")
+```
+
+## Face plots
+
+In this section we will see the interactive plots showing facial sexual dimorphism.
+To do that we need to transform the PCA vectors to the shape coordinates.
+Each vector (total, allometric and non-allometric) is multiplied by a constant to exaggerate the facial effects (in this case 2 and -2), multiplied by the matrix of eigenvectors, and then added the means for each landmark.
+
+```{r fsd coordinates}
+cols <- rep(paste(vectors$continent, vectors$type, sep="."), 2)
+sex  <- c(rep("Male", 18), rep("Female", 18))
+cols <- paste(cols, sex, sep = ".")
+fsdcoords <- as.data.frame(matrix(0, ncol = length(cols), nrow = nrow(means)))
+colnames(fsdcoords) <- cols
+
+fsdcoords[,c(1:18)] <- apply(as.matrix(vectors[, 2:88] * -2) %*% t(as.matrix(eigenvec)), 1, 
+                              function(x) x + t(means))
+fsdcoords[,c(19:36)] <- apply(as.matrix(vectors[, 2:88] * 2) %*% t(as.matrix(eigenvec)), 1, 
+                              function(x) x + t(means))
+
+averagecoords <- t(( rep(0, 87) %*% t(as.matrix(eigenvec))) + t(means))
+```
+
+
+```{r 3d fsd plots}
+source("PlotFaces.R")
+Plot2Faces(fsdcoords[ ,1], fsdcoords[,19], facets, "AFR Total SD")
+Plot2Faces(fsdcoords[ ,2], fsdcoords[,20], facets, "AMR Total SD")
+Plot2Faces(fsdcoords[ ,3], fsdcoords[,21], facets, "EAS Total SD")
+Plot2Faces(fsdcoords[ ,4], fsdcoords[,22], facets, "SAS Total SD")
+Plot2Faces(fsdcoords[ ,5], fsdcoords[,23], facets, "NEU Total SD")
+Plot2Faces(fsdcoords[ ,6], fsdcoords[,24], facets, "SEU Total SD")

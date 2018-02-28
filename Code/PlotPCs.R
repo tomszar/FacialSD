@@ -6,7 +6,7 @@ PlotPCs <- function(dataset, group, minPC, maxPC)
   
   require(tidyr)
   require(ggplot2)
-  require(ggjoy)
+  require(ggridges)
   
   newdat       <- cbind(group, dataset)
   newdat$group <- as.factor(newdat$group)
@@ -24,8 +24,8 @@ PlotPCs <- function(dataset, group, minPC, maxPC)
   toval   <- mean(longdb$value[fromPC:toPC]) + 2*sd(longdb$value[fromPC:toPC])
 
   p1 <- ggplot(longdb[fromPC:toPC , ], aes(y = PC )) + 
-        geom_joy(aes(x = value, fill = group), alpha = .2, color = "white", from = fromval, to = toval) +
-        theme_joy(grid = FALSE)
+        geom_ridges(aes(x = value, fill = group), alpha = .2, color = "white", from = fromval, to = toval) +
+        theme_ridges(grid = FALSE)
   p1 <- ggpar(p1, palette = "jco")
   
   return(p1)

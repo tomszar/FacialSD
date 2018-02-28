@@ -25,6 +25,7 @@ library(GGally)
 library(ggpubr)
 library(caret)
 library(pophelper)
+library(gridExtra)
 
 setwd('..')
 path <- getwd()
@@ -225,13 +226,13 @@ Based on visual inspection, these are the approximate cluster by geography assoc
 |6       | AFR|
 
 ```{r admixture}
-groups <- pca.eigenvec[,c(53,54)]
+groups <- pca.eigenvec[,c(53, 54),drop=FALSE]
 groups <- data.frame(lapply(groups, as.character), stringsAsFactors=FALSE)
 #This function exports the graph. It is possible to show it here?
-#p1 <- plotQ(admix, ordergrp=T, showlegend=T, grplab=groups, 
-#            barbordercolour="white", barbordersize=0, outputfilename="plotq",imgtype="png")
+p1 <- plotQ(admix, returnplot=T, exportplot=F, quiet=T, basesize=11, showsp=F,
+            grplab=groups, ordergrp=TRUE, selgrp="super_pop", sortind="all")
+plot(p1$plot[[1]])
 ```
-
 
 ## Clustering
 
@@ -322,6 +323,13 @@ If we look at the clustering and the admixture proportions, we see this
 testadmix <- admix[[1]][rownames(admix[[1]]) %in% test$IID,]
 meanstest <- testadmix %>% dplyr::group_by(test$continent) %>% summarise_all(funs(mean))
 meanstest
+
+groups$cont <- groups$super_pop
+groups$cont[pca.eigenvec$IID %in% test$IID ] <- as.character(test$continent)
+
+p1 <- plotQ(admix, returnplot=T, exportplot=F, quiet=T, basesize=11, showsp=F,
+            grplab=groups[,2:3], ordergrp=TRUE, sortind="all", selgrp = "cont")
+grid.arrange(p1$plot[[1]])
 ```
 
 
@@ -330,16 +338,16 @@ meanstest
 ```{r read facedata, message=FALSE, warning=FALSE}
 setwd('..')
 path <- getwd()
-setwd(paste(path, "/Results/PCA", sep = ""))
-coeffs   <- read.csv("coeffs.csv")
+setwd(paste(path, "/Results/FacePCA", sep = ""))
+coeffs   <- read.csv("cleancoeffs.csv")
 ```
 
-```{r merging}
+```{r merging, message=FALSE}
 colnames(coeffs)[1] <- "IID"
 total      <- merge(test, coeffs, by = "IID") 
-FacePCA    <- total[,60:146]
+FacePCA    <- total[,61:147]
 GenPCA     <- total[,3:52]
-Covariates <- total[,c(1,2,56:59,54,55)]
+Covariates <- total[,c(1,2,56:60,54,55)]
 
 PCnames <- sprintf("PC%s",seq(1:87))
 colnames(FacePCA) <- PCnames

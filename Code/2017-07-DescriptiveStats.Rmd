@@ -41,7 +41,7 @@ head(coeffs[,1:8])
 
 After cleaning, we end up with `r nrow(coeffs)` individuals
 
-# Descriptive stats
+## Descriptive stats
 
 We can look at summary statistics
 
@@ -84,3 +84,11 @@ ggarrange(p1, p2, p3, p4,
           common.legend = T, legend = "bottom")
 ```
 
+## Saving database
+
+We'll save the clean coeffs for future use.
+
+```{r saving, message=FALSE}
+setwd(paste(path, "/Results/FacePCA", sep = ""))
+write.csv(coeffs, file = "cleancoeffs.csv", quote = F, row.names = F)
+```

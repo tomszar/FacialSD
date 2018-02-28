@@ -23,28 +23,15 @@ library(car) #for Manova
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/FacePCA", sep = ""))
-coeffs   <- read.csv("coeffs.csv")
+coeffs   <- read.csv("cleancoeffs.csv")
 eigenvec <- read.csv("eigenvectors.csv", header=F)
 eigenval <- read.csv("eigenvalues.csv", header=F)
 means    <- read.csv("means.csv", header=F)
 facets   <- read.csv("facets.csv", header=F)
-```
-
-## Data cleaning
-
-For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age).
-
-```{r data cleaning}
-coeffs = filter(coeffs, Sex == 'Female' | Sex == 'Male')
-coeffs = droplevels(coeffs)
-coeffs = na.omit(coeffs)
-dim(coeffs)
-head(coeffs[,1:8])
+set.seed(102)
 coeffs200 <- coeffs[c(sample(rownames(coeffs[coeffs$Sex == "Female",]), 200), 
                     sample(rownames(coeffs[coeffs$Sex == "Male",]), 200) ) , ]
 ```
-
-After cleaning, we end up with `r nrow(coeffs)` individuals
 
 ## Facial sexual dimorphism analysis
 
@@ -53,16 +40,15 @@ After cleaning, we end up with `r nrow(coeffs)` individuals
 I will first test for differences in location between males in females in the face PCA.
 To do that I will use two different methods.
 In both methods I will use the full set of PCs, and a subset of the first 10 PCs.
-First, I will compare males and females location using Hotelling's T^2^ statistic, which is a multivariate t-test.
+First, I will compare males and females location using Hotelling's $T^{2}$ statistic, which is a multivariate t-test.
 The downside is that we cannot control for other covariates, such as Age and BMI.
 The results are virtually identical when using a normalized PC space (not shown here).
 
 ```{r hotelling}
-set.seed(10)
-fit <- hotelling.test(.~Sex, data = coeffs200[,c(2, 7:ncol(coeffs))])
+fit <- hotelling.test(.~Sex, data = coeffs[,c(2, 7:ncol(coeffs))])
 fit
 
-fit10 <- hotelling.test(.~Sex, data = coeffs200[,c(2, 7:16)])
+fit10 <- hotelling.test(.~Sex, data = coeffs[,c(2, 7:16)])
 fit10
 ```
 
@@ -70,11 +56,11 @@ Second, I will use the more involved PERMANOVA (Anderson 2001) using the mahalan
 The benefit of mahalanobis distance is that the within-group variance is taken into account, and not only the euclidean distance in space. 
 
 ```{r permanova}
-fit <- adonis(coeffs200[ , 7:ncol(coeffs200)] ~ coeffs200$Sex + coeffs200$Age + coeffs200$BMI,
+fit <- adonis(coeffs[ , -(1:6)] ~ coeffs$Sex + coeffs$Age + coeffs$Height + coeffs$Weight,
               method="mahalanobis")
 fit
 
-fit10 <- adonis(coeffs200[ , 7:16] ~ coeffs200$Sex + coeffs200$Age + coeffs200$BMI, 
+fit10 <- adonis(coeffs[ , 7:16] ~ coeffs$Sex + coeffs$Age + coeffs$Height + coeffs$Weight, 
                 method="mahalanobis")
 fit10
 ```
@@ -83,7 +69,7 @@ We can also use the mahalanobis distance between group means as a measure of eff
 In this case there is nothing else to compare with, so we show the mahalanobis distance between males and females in the whole dataset. 
 
 ```{r effect size}
-madist <- pairwise.mahalanobis(coeffs200[, 7:ncol(coeffs200)], coeffs200$Sex)
+madist <- pairwise.mahalanobis(coeffs[, -(1:6)], coeffs$Sex)
 madist$distance
 ```
 
@@ -92,13 +78,15 @@ madist$distance
 I will use Anderson (2006) method for testing differences in dispersion between sexes
 
 ```{r permdist}
-dist  <- vegdist(coeffs200[, 7:16], method = "mahalanobis")
-fit10 <- betadisper(dist, coeffs200$Sex)
+dist <- vegdist(coeffs[, -(1:6)], method = "mahalanobis")
+fit  <- betadisper(dist, coeffs$Sex)
+anova(fit)
+
+dist  <- vegdist(coeffs[, 7:16], method = "mahalanobis")
+fit10 <- betadisper(dist, coeffs$Sex)
 anova(fit10)
 ```
 
-
-Remember to test the null hypothesis that the dispersions are identical between groups, using Anderson 2006
 
 ## Allometric and non-allometric components
 
@@ -107,22 +95,22 @@ To generate the total FSD vector, we will regress face shape on sex, using age a
 
 ```{r Total FSD and consensus faces}
 #Multivariate regression
-formula <- as.matrix(coeffs200[,7:93]) ~ coeffs200$Sex + coeffs200$Age + coeffs200$BMI + 
-                                         coeffs200$Height
+formula <- as.matrix(coeffs[, -(1:6)]) ~ coeffs$Sex + coeffs$Age + coeffs$Weight + 
+                                         coeffs$Height
 head(model.matrix(formula))
-model   <- lm(as.matrix(coeffs200[,7:93]) ~ coeffs200$Sex + coeffs200$Age + coeffs200$BMI + 
-                                            coeffs200$Height)
+model   <- lm(as.matrix(coeffs[, -(1:6)]) ~ coeffs$Sex + coeffs$Age + coeffs$Weight + 
+                                         coeffs$Height)
 summary(manova(model), test="Pillai")
 Manova(model)
 
-model10   <- lm(as.matrix(coeffs200[,7:16]) ~ coeffs200$Sex + coeffs200$Age + coeffs200$BMI + 
-                                            coeffs200$Height)
+model10 <- lm(as.matrix(coeffs[, 7:16]) ~ coeffs$Sex + coeffs$Age + coeffs$Weight + 
+                                             coeffs$Height)
 summary(manova(model10), test="Pillai")
 Manova(model10)
 
 #Calculating the average position
-Males   <- colMeans(coeffs200[coeffs200$Sex == 'Male', 7:ncol(coeffs200)])
-Females <- colMeans(coeffs200[coeffs200$Sex == 'Female', 7:ncol(coeffs200)])
+Males   <- colMeans(coeffs[coeffs$Sex == 'Male', -(1:6)])
+Females <- colMeans(coeffs[coeffs$Sex == 'Female', -(1:6)])
 consensus <- as.data.frame(t(data.frame(Males, Females)))
 remove(Males, Females)
 ```
@@ -140,12 +128,12 @@ plotmeans <- function(matrix, means, factor, x1, y1)
   p1 <- ggpar(p1, palette = "jco")
   return(p1)
 }
-p1 <- plotmeans(coeffs200[,7:ncol(coeffs)], consensus, coeffs200$Sex, "PC1", "PC2")
-p2 <- plotmeans(coeffs200[,7:ncol(coeffs)], consensus, coeffs200$Sex, "PC3", "PC4")
-p3 <- plotmeans(coeffs200[,7:ncol(coeffs)], consensus, coeffs200$Sex, "PC5", "PC6")
-p4 <- plotmeans(coeffs200[,7:ncol(coeffs)], consensus, coeffs200$Sex, "PC7", "PC8")
-p5 <- plotmeans(coeffs200[,7:ncol(coeffs)], consensus, coeffs200$Sex, "PC9", "PC10")
-p6 <- plotmeans(coeffs200[,7:ncol(coeffs)], consensus, coeffs200$Sex, "PC11", "PC12")
+p1 <- plotmeans(coeffs[, -(1:6)], consensus, coeffs$Sex, "PC1", "PC2")
+p2 <- plotmeans(coeffs[, -(1:6)], consensus, coeffs$Sex, "PC3", "PC4")
+p3 <- plotmeans(coeffs[, -(1:6)], consensus, coeffs$Sex, "PC5", "PC6")
+p4 <- plotmeans(coeffs[, -(1:6)], consensus, coeffs$Sex, "PC7", "PC8")
+p5 <- plotmeans(coeffs[, -(1:6)], consensus, coeffs$Sex, "PC9", "PC10")
+p6 <- plotmeans(coeffs[, -(1:6)], consensus, coeffs$Sex, "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6, 
           ncol=2, nrow=3, 
@@ -157,8 +145,8 @@ To decompose the total FSD into its allometric and non-allometric components, we
 
 ```{r fsd estimations}
 consensus[3,] <- model$coefficients[2,]
-consensus[4,] <- coef(model)[5,] * (mean(coeffs200[coeffs200$Sex == 'Male',4]) -
-                                    mean(coeffs200[coeffs200$Sex == 'Female',4]))
+consensus[4,] <- coef(model)[5,] * (mean(coeffs[coeffs$Sex == 'Male',4]) -
+                                    mean(coeffs[coeffs$Sex == 'Female',4]))
 consensus[5,] <- as.numeric(consensus[3,]) - consensus[4,]
 row.names(consensus) <- c("Males", "Females", "TotalSD", "Allometric", "Non-allometric")
 ```
@@ -168,12 +156,12 @@ Note that in the plots, the vectors are scaled by 3.
 
 ```{r vectors, fig.height=10, fig.width=10, message=FALSE}
 source("PlotPCs.R")
-p1 <- plotvect(coeffs200[,7:ncol(coeffs200)], rownames(consensus)[3:5], consensus[3:5,], "PC1", "PC2")
-p2 <- plotvect(coeffs200[,7:ncol(coeffs200)], rownames(consensus)[3:5], consensus[3:5,], "PC3", "PC4")
-p3 <- plotvect(coeffs200[,7:ncol(coeffs200)], rownames(consensus)[3:5], consensus[3:5,], "PC5", "PC6")
-p4 <- plotvect(coeffs200[,7:ncol(coeffs200)], rownames(consensus)[3:5], consensus[3:5,], "PC7", "PC8")
-p5 <- plotvect(coeffs200[,7:ncol(coeffs200)], rownames(consensus)[3:5], consensus[3:5,], "PC9", "PC10")
-p6 <- plotvect(coeffs200[,7:ncol(coeffs200)], rownames(consensus)[3:5], consensus[3:5,], "PC11", "PC12")
+p1 <- plotvect(coeffs[, -(1:6)], rownames(consensus)[3:5], consensus[3:5,], "PC1", "PC2")
+p2 <- plotvect(coeffs[, -(1:6)], rownames(consensus)[3:5], consensus[3:5,], "PC3", "PC4")
+p3 <- plotvect(coeffs[, -(1:6)], rownames(consensus)[3:5], consensus[3:5,], "PC5", "PC6")
+p4 <- plotvect(coeffs[, -(1:6)], rownames(consensus)[3:5], consensus[3:5,], "PC7", "PC8")
+p5 <- plotvect(coeffs[, -(1:6)], rownames(consensus)[3:5], consensus[3:5,], "PC9", "PC10")
+p6 <- plotvect(coeffs[, -(1:6)], rownames(consensus)[3:5], consensus[3:5,], "PC11", "PC12")
 
 ggarrange(p1, p2, p3, p4, p5, p6, 
           ncol=2, nrow=3, 
@@ -182,7 +170,7 @@ ggarrange(p1, p2, p3, p4, p5, p6,
 
 We export the fitted model and the vectors to visualize them as face shapes, [here](2017-07-FaceEffects.html).
 
-```{r export}
+```{r export, message=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/FSD", sep = ""))
