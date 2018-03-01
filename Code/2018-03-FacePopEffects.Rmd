@@ -12,6 +12,10 @@ Remember to open the file in chrome.
 We will load the necessary libraries, and datasets
 
 ```{r libraries, warning=FALSE, message=FALSE}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
@@ -46,12 +50,28 @@ fsdcoords[,c(19:36)] <- apply(as.matrix(vectors[, 2:88] * 2) %*% t(as.matrix(eig
 averagecoords <- t(( rep(0, 87) %*% t(as.matrix(eigenvec))) + t(means))
 ```
 
+Now we'll estimate the euclidean distances between landmarks.
 
-```{r 3d fsd plots}
+```{r distance calculation}
+source("Distances.R")
+cols    <- paste(vectors$continent, vectors$type, sep=".")
+eucdist <- as.data.frame(matrix(0, ncol = length(cols), nrow = nrow(means)/3))
+colnames(eucdist) <- cols
+
+for(col in 1:ncol(eucdist)){
+  eucdist[, col] <- getDistance(fsdcoords[, col], fsdcoords[, col + 18])
+}
+
+#On the same scale
+eucdist       <- eucdist %>% tibble::rowid_to_column() %>% gather(var, value, -rowid)
+eucdist$value <- scales::rescale(eucdist$value)
+eucdist       <- spread(eucdist, var,  value)
+eucdist$rowid <- NULL
+```
+
+```{r distance plots, message=FALSE}
 source("PlotFaces.R")
-Plot2Faces(fsdcoords[ ,1], fsdcoords[,19], facets, "AFR Total SD")
-Plot2Faces(fsdcoords[ ,2], fsdcoords[,20], facets, "AMR Total SD")
-Plot2Faces(fsdcoords[ ,3], fsdcoords[,21], facets, "EAS Total SD")
-Plot2Faces(fsdcoords[ ,4], fsdcoords[,22], facets, "SAS Total SD")
-Plot2Faces(fsdcoords[ ,5], fsdcoords[,23], facets, "NEU Total SD")
-Plot2Faces(fsdcoords[ ,6], fsdcoords[,24], facets, "SEU Total SD")
+PlotMultipleFaces(averagecoords, facets, eucdist[,c(3,6,9,12,15,18)])
+PlotMultipleFaces(averagecoords, facets, eucdist[,c(2,5,8,11,14,17)])
+```
+

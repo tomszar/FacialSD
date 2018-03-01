@@ -22,6 +22,7 @@ library(dplyr)
 library(ggpubr)
 library(vegan)
 library(HDMD)
+
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
@@ -293,44 +294,52 @@ Angles between total SD vectors
 
 ```{r angles, message=F}
 source("Distances.R")
-levels(consensus$continent)
-ma <- getPAngle(totalSD[,2:88])
-ma
-plot(hclust(as.dist(ma)))
+labscont   <- levels(consensus$continent)
+
+totangle   <- getPAngle(totalSD[,2:88])
+totangle10 <- getPAngle(totalSD[,2:11])
+plot(hclust(as.dist(totangle)), labels = labscont, main = "Cluster Dendrogram Total SD")
+plot(hclust(as.dist(totangle10)), labels = labscont, main = "Cluster Dendrogram Total SD, subspace")
+
+alloang   <- getPAngle(alloSD[,2:88])
+alloang10 <- getPAngle(alloSD[,2:11])
+plot(hclust(as.dist(alloang)), labels = labscont, main = "Cluster Dendrogram Allometric SD")
+plot(hclust(as.dist(alloang10)), labels = labscont, main = "Cluster Dendrogram Allometric SD, subspace")
+
+nalloang   <- getPAngle(nonalloSD[,2:88])
+nalloang10 <- getPAngle(nonalloSD[,2:11])
+plot(hclust(as.dist(nalloang)), labels = labscont)
+plot(hclust(as.dist(nalloang10)), labels = labscont)
 
 #Not working
-nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
+#nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
 #pvals <- 
 #  for(i in 1:(nrow(nulls)))
 #  {
 #    
 #  }
-sum(ma[1,2] < nulls[1,])/1000
-sum(ma[1,3] < nulls[2,])/1000
-sum(ma[1,4] < nulls[3,])/1000
-sum(ma[1,5] < nulls[4,])/1000
-sum(ma[1,6] < nulls[5,])/1000
-sum(ma[2,3] < nulls[6,])/1000
-sum(ma[2,4] < nulls[7,])/1000
-sum(ma[2,5] < nulls[8,])/1000
-sum(ma[2,6] < nulls[9,])/1000
-sum(ma[3,4] < nulls[10,])/1000
-sum(ma[3,5] < nulls[11,])/1000
-sum(ma[3,6] < nulls[12,])/1000
-sum(ma[4,5] < nulls[13,])/1000
-sum(ma[4,6] < nulls[14,])/1000
-sum(ma[5,6] < nulls[15,])/1000
+#sum(ma[1,2] < nulls[1,])/1000
+#sum(ma[1,3] < nulls[2,])/1000
+#sum(ma[1,4] < nulls[3,])/1000
+#sum(ma[1,5] < nulls[4,])/1000
+#sum(ma[1,6] < nulls[5,])/1000
+#sum(ma[2,3] < nulls[6,])/1000
+#sum(ma[2,4] < nulls[7,])/1000
+#sum(ma[2,5] < nulls[8,])/1000
+#sum(ma[2,6] < nulls[9,])/1000
+#sum(ma[3,4] < nulls[10,])/1000
+#sum(ma[3,5] < nulls[11,])/1000
+#sum(ma[3,6] < nulls[12,])/1000
+#sum(ma[4,5] < nulls[13,])/1000
+#sum(ma[4,6] < nulls[14,])/1000
+#sum(ma[5,6] < nulls[15,])/1000
 
 ```
 
 We can compute the angle between the total an allometric SD for each group.
 
 ```{r total allo angle}
-alloang <- getPAngle(alloSD[,2:88])
-alloang
 
-nalloang <- getPAngle(nonalloSD[,2:88])
-nalloang
 ```
 
 

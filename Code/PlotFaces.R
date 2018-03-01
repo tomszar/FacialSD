@@ -1,8 +1,8 @@
 Plot2Faces <- function(face1, face2, facets, title = NULL )
 {
   # Plot two faces overlaid in the same plot
-  # The input needs to be two vectors with x,y.z consecutive coordinates
-  # and the faces as a matrix
+  # Face1 and face2 are vectors with x,y.z consecutive coordinates.
+  # Facets is a matrix with the surface information.
   
   require(plotly)
   rface1 <- matrix(face1, ncol=3, byrow=T)
@@ -46,9 +46,12 @@ Plot2Faces <- function(face1, face2, facets, title = NULL )
 
 Plot1Face <- function(face1, facets, colormap=NULL, title=NULL)
 {
-  # Plots one face, with the corresponding facets
-  # If colormap is defined, it will be plotted
-  require(grDevices)
+  # Plots one face, with the corresponding facets and colormap if given.
+  # Face1 is a vector of size n with the x,y,z coordiantes, while facets is a matrix 
+  # with surface information.
+  # Colormap is a vector of size n/3 with values to be mapped onto face1.
+  
+  #require(grDevices)
   require(plotly)
   rface1 <- matrix(face1, ncol=3, byrow=T)
   
@@ -101,4 +104,84 @@ Plot1Face <- function(face1, facets, colormap=NULL, title=NULL)
   #colorRamp(c("white", "black"))
   #scales::rescale(colormap)
   return(myPlot)
+}
+
+PlotMultipleFaces <- function(face1, facets, distances)
+{
+  # Plots repeteadly the same face1 with different distances values mapped onto the face.
+  # Face1 is a vector of size n with the x,y,z coordiantes, and facets is the matrix with
+  # surface information.
+  # Distances is a matrix size n/3, m with the values to be mapped onto the faces
+  
+  nfaces <- ncol(distances)
+  ns     <- 1:nfaces
+  scenes <- paste("scene", ns, sep="")
+  plots  <- list()
+  
+  for( i in 1:nfaces)
+  {
+    plots[[i]] <- Plot1Face(face1, facets, colormap=distances[,i])
+    plots[[i]]$x$layoutAttrs      <- NULL
+    plots[[i]]$x$attrs[[1]]$scene <- scenes[i]
+  }
+  
+  ax <- list(
+    title = "",
+    zeroline = FALSE,
+    showline = FALSE,
+    showticklabels = FALSE,
+    showgrid = FALSE
+  )
+  
+  scene <- list(
+    xaxis = ax, 
+    yaxis = ax, 
+    zaxis = ax, 
+    camera = list(
+      eye = list(
+        x = 0, 
+        y = -0.1, 
+        z = 3.0)))
+  
+  mysubplot <- subplot(plots) 
+  
+  if(nfaces > 4)
+  {
+    y1 <- c(0, 0.5)
+    y2 <- c(0.5, 1)
+    cubs  <- (nfaces %/% 2) + (nfaces %% 2)
+    cuads <- round(seq(0, 1, 1 / cubs), digits = 2)
+    x     <- list()
+    for(i in 1:cubs)
+    {
+      x[[i]] <- c(cuads[[i]], cuads[[i+1]])
+    }
+    domain <- list()
+    for(i in 1:nfaces)
+    {
+      if(i <= cubs)
+      {
+        domain[[i]] <- list(x = unlist(x[i]), y = y1)
+      } else{
+        domain[[i]] <- list(x = unlist(x[i-3]), y = y2)
+      }
+    }
+  }
+    
+  
+  for (i in 1:nfaces)
+  {
+    if(nfaces > 4)
+    {
+      scene$domain <- domain[[i]]
+      myoptions    <- paste(scenes[[i]], "= scene", sep = " ")
+      mysubplot    <- eval(parse(text = paste("layout(mysubplot,", myoptions, ")")))
+      mysubplot
+    }
+    myoptions <- paste(scenes[[i]], "= scene", sep = " ")
+    mysubplot <- eval(parse(text = paste("layout(mysubplot,", myoptions, ")")))
+    mysubplot
+  }
+  
+  return(mysubplot)
 }
