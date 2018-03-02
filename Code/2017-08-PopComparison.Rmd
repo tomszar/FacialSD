@@ -22,6 +22,7 @@ library(dplyr)
 library(ggpubr)
 library(vegan)
 library(HDMD)
+library(tidyr)
 
 setwd('..')
 path <- getwd()
@@ -343,19 +344,25 @@ We can compute the angle between the total an allometric SD for each group.
 ```
 
 
-Calculating the magnitude of each vector
+To export the PCA vectors and visually compare the effects of sex on facial morphology, we will standardize them so to have the same magnitude across populations.
+To do that, we'll tranform each vector to a unit vector, using $\hat{u} = \frac{\overrightarrow{ {u} } {\|\overrightarrow{u}\|}$ 
 
-```{r}
-apply(totalSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))
-apply(alloSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))
-apply(nonalloSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))
+```{r standardize magnitude}
+popvectors <- rbind(totalSD, alloSD, nonalloSD)
+cols       <- paste(c(rep("Total", 6), rep("Allo", 6), rep("NonAllo", 6)), popvectors[,1], sep = ".")
+popvectors <- as.data.frame(t(popvectors[, (-1)]))
+colnames(popvectors) <- cols
+
+norm_vec <- function(x) sqrt(sum(x^2))
+apply(popvectors, 2, function(x) norm_vec(x))
+
+popvectunit <- as.data.frame(apply(popvectors, 2, function(x) x / norm_vec(x) ) )
+apply(popvectunit, 2, function(x) norm_vec(x))
 ```
 
 ## Saving
 
 ```{r save}
-final      <- rbind(totalSD, alloSD, nonalloSD)
-final$type <- c(rep("Total", 6), rep("Allo", 6), rep("NonAllo", 6))
 setwd(paste(path, "/Results/FSD", sep = ""))
-write.csv(final, file="popvectors.csv", quote = F, row.names = F)
+write.csv(popvectunit, file="popvectors.csv", quote = F, row.names = F)
 ```

@@ -131,6 +131,7 @@ library(dplyr)
 library(ggpubr)
 library(vegan)
 library(HDMD)
+library(tidyr)
 
 setwd('..')
 path &lt;- getwd()
@@ -521,20 +522,33 @@ plot(hclust(as.dist(nalloang)), labels = labscont)</code></pre>
 #sum(ma[4,6] &lt; nulls[14,])/1000
 #sum(ma[5,6] &lt; nulls[15,])/1000</code></pre>
 <p>We can compute the angle between the total an allometric SD for each group.</p>
-<p>Calculating the magnitude of each vector</p>
-<pre class="r"><code>apply(totalSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))</code></pre>
-<pre><code>## [1] 5.234262 3.157387 4.347576 3.968062 4.391412 4.127187</code></pre>
-<pre class="r"><code>apply(alloSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))</code></pre>
-<pre><code>## [1] 0.1551730 0.3462895 0.4918891 1.0568834 0.1482227 0.2633019</code></pre>
-<pre class="r"><code>apply(nonalloSD[,2:88], 1, function(x) as.numeric(x) %*% as.numeric(x))</code></pre>
-<pre><code>## [1] 4.300533 1.993589 3.700446 3.730675 3.308227 2.936845</code></pre>
+<p>To export the PCA vectors and visually compare the effects of sex on facial morphology, we will standardize them so to have the same magnitude across populations. To do that, we’ll tranform each vector to a unit vector, using <span class="math inline">\(\hat{u} = \frac{\overrightarrow{ {u} } {\|\overrightarrow{u}\|}\)</span></p>
+<pre class="r"><code>popvectors &lt;- rbind(totalSD, alloSD, nonalloSD)
+cols       &lt;- paste(c(rep(&quot;Total&quot;, 6), rep(&quot;Allo&quot;, 6), rep(&quot;NonAllo&quot;, 6)), popvectors[,1], sep = &quot;.&quot;)
+popvectors &lt;- as.data.frame(t(popvectors[, (-1)]))
+colnames(popvectors) &lt;- cols
+
+norm_vec &lt;- function(x) sqrt(sum(x^2))
+apply(popvectors, 2, function(x) norm_vec(x))</code></pre>
+<pre><code>##   Total.AFR   Total.AMR   Total.EAS   Total.SAS   Total.NEU   Total.SEU 
+##   2.2878510   1.7769039   2.0850841   1.9919994   2.0955697   2.0315480 
+##    Allo.AFR    Allo.AMR    Allo.EAS    Allo.SAS    Allo.NEU    Allo.SEU 
+##   0.3939200   0.5884637   0.7013481   1.0280484   0.3849971   0.5131295 
+## NonAllo.AFR NonAllo.AMR NonAllo.EAS NonAllo.SAS NonAllo.NEU NonAllo.SEU 
+##   2.0737728   1.4119452   1.9236545   1.9314956   1.8188531   1.7137226</code></pre>
+<pre class="r"><code>popvectunit &lt;- as.data.frame(apply(popvectors, 2, function(x) x / norm_vec(x) ) )
+apply(popvectunit, 2, function(x) norm_vec(x))</code></pre>
+<pre><code>##   Total.AFR   Total.AMR   Total.EAS   Total.SAS   Total.NEU   Total.SEU 
+##           1           1           1           1           1           1 
+##    Allo.AFR    Allo.AMR    Allo.EAS    Allo.SAS    Allo.NEU    Allo.SEU 
+##           1           1           1           1           1           1 
+## NonAllo.AFR NonAllo.AMR NonAllo.EAS NonAllo.SAS NonAllo.NEU NonAllo.SEU 
+##           1           1           1           1           1           1</code></pre>
 </div>
 <div id="saving" class="section level2">
 <h2>Saving</h2>
-<pre class="r"><code>final      &lt;- rbind(totalSD, alloSD, nonalloSD)
-final$type &lt;- c(rep(&quot;Total&quot;, 6), rep(&quot;Allo&quot;, 6), rep(&quot;NonAllo&quot;, 6))
-setwd(paste(path, &quot;/Results/FSD&quot;, sep = &quot;&quot;))
-write.csv(final, file=&quot;popvectors.csv&quot;, quote = F, row.names = F)</code></pre>
+<pre class="r"><code>setwd(paste(path, &quot;/Results/FSD&quot;, sep = &quot;&quot;))
+write.csv(popvectunit, file=&quot;popvectors.csv&quot;, quote = F, row.names = F)</code></pre>
 </div>
 
 
