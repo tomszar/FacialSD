@@ -124,10 +124,11 @@ $(document).ready(function () {
 
 <div id="summary" class="section level2">
 <h2>Summary</h2>
-<p>This project aims to test for differences in patterns of facial sexual dimorphism across populations. The workflow can be summarized as follows:</p>
+<p>This project aims to test for differences in patterns of facial sexual dimorphism across populations. The main purpose is to test whether because of morphological divergence, effects of sex on facial morphology have changed as well. Therefore, the first step is to estimate populations based on genetic data. Next, we will ask whether different populations show differences in facial morphology (using the whole sample, and divided by sex as well). Finally, between those populations showing differences in facial morphology, we will test whether patterns of sexual dimorphism are shared or not. The workflow can be summarized as follows:</p>
 <ul>
 <li>Obtain the 3D landmark data from participants’ faces and run a standard geometric morphometrics approach, that involves generalized procrustes analysis, PCA, and retention of PCs that explain 90% of the variance.</li>
-<li>Decompose facial sexual dimorphism (FSD) in allometric and non-allometric components.</li>
+<li>Estimate facial sexual dimorphism (FSD) using multivariate linear regression of face shape on sex</li>
+<li>Decompose FSD in allometric and non-allometric components.</li>
 <li>Generate different groupings based on ancestry analysis from DNA.</li>
 <li>Compare pattern of FSD between populations.</li>
 </ul>
