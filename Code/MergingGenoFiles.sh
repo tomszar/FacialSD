@@ -17,7 +17,7 @@ done
 
 #Merge source files, with the problematic triallelic snps removed
 ./plink --merge-list FinalMergeList.txt --out Merged
-./plink --bfile Merged --geno --hwe 1e-50 --indep-pairwise 50 10 0.1 --out Clean
+./plink --bfile Merged --geno --indep 50 5 2 --out Clean
 ./plink --bfile Merged --extract Clean.prune.in --remove Clean.nosex --make-bed --out CleanMerged
 
 #Remove source files

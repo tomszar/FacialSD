@@ -10,7 +10,7 @@ It will merge the final datasets (Facial PCA, Genetic PCA, Covariates, Admixture
 The steps to create the genetic PCA were as following:
 
 - Remove of missing genotype data.
-- LD pruning using a window size of 10kb and a VIF of 2.
+- LD pruning using a window size of 50 SNPs, with 5 SNPs steps, and a VIF of 2.
 - Only 1000Genomes samples were used to create the PCA, and our samples were projected there.
 - A total of 50 PCs were extracted
 
