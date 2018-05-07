@@ -17,14 +17,15 @@ The workflow can be summarized as follows:
 
 The links below will take you to the proper analysis.
 Each link is in sequential order, many of them building on the output from the previous scripts.
+The general idea is first to generate the corresponding PCAs for facial and genetic data, and merge them.
 
 - Here you can see the generation of the [Face PCA](Code/2017-11-FacePCA.html). 
-- Here you can see some [descriptive statistics](Code/2017-07-DescriptiveStats.html) from the covariates and Face PCA.
+- Here you can see the clustering of the [Genetic PCA](Code/2018-03-GeneticPCA.html). 
+**Note:** the genetic PCA was made in plink, using only the 1000 Genomes individuals to create the PCA, and then projecting our samples.
+- Here you can see some [descriptive statistics](Code/2017-07-DescriptiveStats.html) from the merged data set.
 - Here is the [hypothesis testing](Code/2017-07-HTesting.html) on the effect of sex and height on the face, using the whole dataset.
 This is also the preliminary analysis on the allometric and non-allometric decomposition.
 - Here you can visualize interactively some preliminary [face effects](Code/2017-07-FaceEffects.html) of sexual dimorphism mande in the previous script. 
 Remember to open this file in chrome.
-- Here you can see the clustering of the [genetic PCA](Code/2017-07-GenAnalysis.html). 
-**Note:** the genetic PCA was made in plink, using only the HapMap individuals to create the PCA, and then projecting our samples.
 - This is the core of the analysis, on the [population comparisons](Code/2017-08-PopComparison.html). 
 - Here you can see [FSD across human populations](Code/2018-03-FacePopEffects.html) 

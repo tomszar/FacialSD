@@ -11,7 +11,7 @@ Because this is a sample testing, we will take a random sample of 200 males and 
 
 We will load the necessary libraries and datasets
 
-```{r libraries dataset, warning=FALSE, message=FALSE}
+```{r libraries, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(dplyr)
 library(ggpubr)
@@ -20,24 +20,21 @@ library(tidyr)
 library(vegan)
 library(HDMD)
 library(car) #for Manova
+```
+
+
+```{r dataset, warning=FALSE, message=FALSE}
 setwd('..')
 path <- getwd()
-setwd(paste(path, "/Results/FacePCA", sep = ""))
-coeffs   <- read.csv("cleancoeffs.csv")
-eigenvec <- read.csv("eigenvectors.csv", header=F)
-eigenval <- read.csv("eigenvalues.csv", header=F)
-means    <- read.csv("means.csv", header=F)
-facets   <- read.csv("facets.csv", header=F)
-set.seed(102)
-coeffs200 <- coeffs[c(sample(rownames(coeffs[coeffs$Sex == "Female",]), 200), 
-                    sample(rownames(coeffs[coeffs$Sex == "Male",]), 200) ) , ]
+setwd(paste(path, "/Results/MergedData", sep = ""))
+load("MergedDat.RData")
 ```
 
 ## Facial sexual dimorphism analysis
 
 ### Differences in location
 
-I will first test for differences in location between males in females in the face PCA.
+I will first test for differences in location between males in females in the face PCA, both across and within populations.
 To do that I will use two different methods.
 In both methods I will use the full set of PCs, and a subset of the first 10 PCs.
 First, I will compare males and females location using Hotelling's $T^{2}$ statistic, which is a multivariate t-test.
@@ -45,20 +42,37 @@ The downside is that we cannot control for other covariates, such as Age and BMI
 The results are virtually identical when using a normalized PC space (not shown here).
 
 ```{r hotelling}
-fit <- hotelling.test(.~Sex, data = coeffs[,c(2, 7:ncol(coeffs))])
+fit <- hotelling.test(.~Sex, data = MergedDat[[1]][,c(3,59:145)])
 fit
 
-fit10 <- hotelling.test(.~Sex, data = coeffs[,c(2, 7:16)])
+fit10 <- hotelling.test(.~Sex, data = MergedDat[[1]][,c(3,59:68)])
 fit10
 ```
 
-Second, I will use the more involved PERMANOVA (Anderson 2001) using the mahalanobis distance between males and females.
+Second, I will use a MANOVA and the more involved PERMANOVA (Anderson 2001) using the mahalanobis distance between males and females.
 The benefit of mahalanobis distance is that the within-group variance is taken into account, and not only the euclidean distance in space. 
 
+```{r manova}
+fit <- lm(as.matrix(MergedDat[[1]][, 59:145]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$prediction)
+Manova(fit, type = 3)
+
+fit10 <- lm(as.matrix(MergedDat[[1]][, 59:68]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$prediction)
+Manova(fit10, type = 3)
+
+fit <- lm(as.matrix(MergedDat[[1]][, 59:145]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$prediction +
+            MergedDat[[1]]$Height + MergedDat[[1]]$Age + MergedDat[[1]]$Weight)
+Manova(fit, type = 3)
+
+fit10 <- lm(as.matrix(MergedDat[[1]][, 59:68]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$prediction +
+              MergedDat[[1]]$Height + MergedDat[[1]]$Age + MergedDat[[1]]$Weight )
+Manova(fit10, type = 3)
+```
+
+
 ```{r permanova}
-fit <- adonis(coeffs[ , -(1:6)] ~ coeffs$Sex + coeffs$Age + coeffs$Height + coeffs$Weight,
+fit10 <- adonis(MergedDat[[1]][, 59:68] ~ MergedDat[[1]]$Sex + MergedDat[[1]]$prediction,
               method="mahalanobis")
-fit
+fit10
 
 fit10 <- adonis(coeffs[ , 7:16] ~ coeffs$Sex + coeffs$Age + coeffs$Height + coeffs$Weight, 
                 method="mahalanobis")

@@ -9,26 +9,34 @@ Remember to open the file in chrome.
 
 ## Preliminaries
 
-We will load the necessary libraries, and datasets
+We will load the necessary libraries
 
 ```{r libraries, warning=FALSE, message=FALSE}
-library(tidyr)
-library(dplyr)
-library(ggplot2)
+library(tidyverse)
+library(broom)
+library(scales)
 source("Distances.R")
 source("PlotFaces.R")
+```
 
+Datasets
+
+```{r datasets, message=FALSE, warning=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
 load("MergedDat.RData")
+MergedDat[[1]]$Sex <- as.factor(MergedDat[[1]]$Sex)
+MergedDat[[1]]$CS  <- log(MergedDat[[1]]$CS)
+
 setwd(paste(path, "/Results/FacePCA", sep = ""))
-eigenvec <- read.csv("eigenvectors.csv", header=F)
-eigenval <- read.csv("eigenvalues.csv", header=F)
-means    <- read.csv("means.csv", header=F)
-facets   <- read.csv("facets.csv", header=F)
-setwd(paste(path, "/Results/FSD", sep = ""))
-vectors <- read.csv("popvectors.csv")
+face.eigenvalues  <- read_delim("eigenvalues.csv", delim = " ", col_names = FALSE)
+face.eigenvectors <- read_csv("eigenvectors.csv", col_names = FALSE)
+face.facets       <- read_csv("facets.csv", col_names = FALSE)
+face.means        <- read_csv("means.csv", col_names = FALSE)
+
+setwd(paste(path, "/Results/GenPCA", sep = ""))
+gen.eigenvalues <- read_delim("PCA.eigenval", delim = " ", col_names = FALSE)
 ```
 
 ## Face plots
@@ -36,22 +44,95 @@ vectors <- read.csv("popvectors.csv")
 In this section we will see the interactive plots showing facial sexual dimorphism.
 To do that we need to transform the PCA vectors to the shape coordinates.
 Each vector (total, allometric and non-allometric) is multiplied by a constant to exaggerate the facial effects (in this case 2 and -2), multiplied by the matrix of eigenvectors, and then added the means for each landmark.
+First, let us generate the regression coefficients.
 
-```{r fsd coordinates}
-sex  <- c(rep("Male", 18), rep("Female", 18))
-cols <- paste(colnames(vectors), sex, sep = ".")
-fsdcoords <- as.data.frame(matrix(0, ncol = length(cols), nrow = nrow(means)))
-colnames(fsdcoords) <- cols
+```{r regress, message=FALSE}
+matrix  <- dplyr::select(MergedDat[[1]], starts_with("Face"))
+covs    <- MergedDat[[1]] %>% dplyr::select(c("Sex", "Age", "Height", "BMI", "prediction"))
+covs[,c(2:4)] <- scale(covs[,c(2:4)])
+regressnon <- cbind(covs, matrix) %>% group_by(prediction) %>%
+  do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~ Sex + Height + BMI + Age
+                , data = .)) %>% tidy(model)
 
-fsdcoords[,c(1:18)] <- as.data.frame(apply(as.data.frame( t(as.matrix(vectors * -2)) %*% t(as.matrix(eigenvec)) ), 1, 
-                              function(x) x + means))
-fsdcoords[,c(19:36)] <- as.data.frame(apply(as.data.frame( t(as.matrix(vectors * 2)) %*% t(as.matrix(eigenvec)) ), 1, 
-                              function(x) x + means))
+regresstot <- cbind(covs, matrix) %>% group_by(prediction) %>%
+  do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~ Sex + BMI + Age
+                , data = .))
+regresstot <- regresstot %>% tidy(model)
 
-averagecoords <- t(( rep(0, 87) %*% t(as.matrix(eigenvec))) + t(means))
+##TOTAL SD##
+extractRegress <- function(dat, filter, select){
+  coefs <- dat %>% group_by(prediction) %>% filter(term == filter) %>%
+    dplyr::select(select)
+  final <- as.data.frame(matrix(0, ncol = 88, nrow = 5))
+  colnames(final) <- c("Pop", colnames(dplyr::select(MergedDat[[1]], starts_with("Face") ) ) )
+  final$Pop       <- levels(MergedDat[[1]]$prediction)
+  for(i in 1:nrow(final)){
+    t <- coefs %>% filter(prediction == final[i,1])
+    final[i,2:88] <- c(t[,select])[[1]]
+  }
+  return(final)
+}
+
+sexcoefstot   <- extractRegress(regresstot, "SexMale", "estimate")
+sexcoefstotse <- extractRegress(regresstot, "SexMale", "std.error")
+sexcoefstotunit <- sexcoefstot
+sexcoefstotunit[,2:88] <- t(apply(sexcoefstot[,2:88], 1, function(x) x/norm(x, type = "2")))
+
+sexcoefsnon   <- extractRegress(regressnon, "SexMale", "estimate")
+sexcoefsnonse <- extractRegress(regressnon, "SexMale", "std.error")
+sexcoefsnonunit <- sexcoefsnon
+sexcoefsnonunit[,2:87] <- t(apply(sexcoefsnon[,2:87], 1, function(x) x/norm(x, type = "2")))
+
+heightcoefs   <- extractRegress(regressnon, "Height", "estimate")
+row <- 1
+for(i in seq(1,10,2)){ #to scale by sex difference
+  t <- covs %>% group_by(prediction, Sex) %>% select(Height) %>% summarise_all(funs(mean(., na.rm = T)))
+  heightcoefs[row, 2:88] <- heightcoefs[row, 2:88] * abs(t$Height[(i+1)] - t$Height[i])
+  row <- row + 1
+}
+heightcoefsse <- extractRegress(regressnon, "Height", "std.error")
+heightcoefsunit <- heightcoefs
+heightcoefsunit[,2:87] <- t(apply(heightcoefs[,2:87], 1, function(x) x/norm(x, type = "2")))
 ```
 
+
+```{r fsd coordinates}
+getLandmarks <- function(coefs){
+  landmarks <- data.frame(matrix(0, nrow = nrow(face.means), ncol = nrow(coefs) * 2))
+  landmarks[,seq(1, 10, 2)] <- unlist(apply((as.matrix(coefs[,2:88]) * 2) %*% 
+                                              t(as.matrix(face.eigenvectors)), 
+                                            1, function(x) x + face.means ) )
+  
+  landmarks[,seq(2, 10, 2)] <- unlist(apply((as.matrix(coefs[,2:88]) * -2) %*% 
+                                              t(as.matrix(face.eigenvectors)), 
+                                            1, function(x) x + face.means ) )
+  return(landmarks)
+}
+
+totlandmark     <- getLandmarks(sexcoefstotunit)
+nonallolandmark <- getLandmarks(sexcoefsnonunit)
+allolandmark    <- getLandmarks(heightcoefsunit)
+
+```
+
+```{r Faces}
+Plot2Faces(allolandmark[,1], allolandmark[,2], as.data.frame(face.facets))
+Plot2Faces(allolandmark[,3], allolandmark[,4], as.data.frame(face.facets))
+Plot2Faces(allolandmark[,5], allolandmark[,6], as.data.frame(face.facets))
+Plot2Faces(allolandmark[,7], allolandmark[,8], as.data.frame(face.facets))
+Plot2Faces(allolandmark[,9], allolandmark[,10], as.data.frame(face.facets))
+```
+
+
 Now we'll estimate the euclidean distances between landmarks.
+
+```{r distances}
+allo <- getDistance(allolandmark[,7], allolandmark[,8])
+allo[,1] <- rescale(allo[,1])
+Plot1Face(allolandmark[,1], as.data.frame(face.facets), colormap = allo[,1])
+
+```
+
 
 ```{r distance calculation}
 eucdist <- as.data.frame(matrix(0, ncol = ncol(vectors), nrow = nrow(means)/3))

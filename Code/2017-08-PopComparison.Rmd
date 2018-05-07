@@ -11,104 +11,27 @@ We'll use multivariate statistics to estimate group differences in the face PCA.
 Also, we'll estimate the vectors of FSD, as well as the allometric and non-allometric components between populations. 
 To do that, we'll compare the magnitude between vectors (degree of facial sexual dimorphism), and the direction (pattern of facial sexual dimorphism). 
 
-
 ## Preliminaries
 
-Loading libraries and databases
+Loading libraries
 
 ```{r libraries data, message=FALSE, warning=FALSE}
-library(ggplot2)
-library(dplyr)
+library(tidyverse)
+library(broom)
 library(ggpubr)
 library(vegan)
 library(HDMD)
-library(tidyr)
+library(car)
+source("Distances.R")
+#Color palette
+OkabeIto <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
+```
 
+```{r datasets, message=FALSE, warning=FALSE}
 setwd('..')
 path <- getwd()
 setwd(paste(path, "/Results/MergedData", sep = ""))
-#Read data
 load("MergedDat.RData")
-```
-
-## Descriptive and exploratory analyses
-
-```{r summary}
-summary(MergedDat[[1]][,3:9])
-summ <- MergedDat[[1]] %>% group_by(continent, Sex) %>% dplyr::select(Age, Height, Weight) %>% 
-            summarise_all(funs(mean(. , na.rm = T), median(. , na.rm = T), sd(. , na.rm = T)))
-tbl_df(summ)
-```
-
-```{r summary plots, message=F}
-p1 <- ggplot(MergedDat[[1]], aes(x = interaction(Sex, continent), y = Age)) + geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="")
-p2 <- ggplot(MergedDat[[1]], aes(x = interaction(Sex, continent), y = Height)) + geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="")
-p3 <- ggplot(MergedDat[[1]], aes(x = interaction(Sex, continent), y = Weight)) + geom_boxplot() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="")
-ggarrange(p1, p2, p3)
-```
-
-
-We can compare the distributions of PCs for each geographical group using joy plots.
-Note that the PCA has been scaled.
-
-```{r joyplots, message=FALSE}
-source("PlotPCs.R")
-ts <- as.data.frame(scale(MergedDat[[2]]))
-p1 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC1", "PC9")
-p2 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC10", "PC19")
-p3 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC20", "PC29")
-p4 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC30", "PC39")
-ggarrange(p1, p2, p3, p4,
-          common.legend = TRUE, legend = "right", 
-          align = "v")
-
-p1 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC40", "PC49")
-p2 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC50", "PC59")
-p3 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC60", "PC69")
-p4 <- PlotPCs(ts, MergedDat[[1]]$continent, "PC70", "PC79")
-ggarrange(p1, p2, p3, p4,
-          common.legend = TRUE, legend = "right", 
-          align = "v")
-```
-
-We can also see the distribution in the first PCs of sexes by each continental group
-
-```{r sexes by continent plots, fig.height = 14, fig.width = 10}
-plotsexes <- function(PCA, cont, x1, y1)
-{
-  highPCA <- filter(PCA, cont)
-  backPCA <- filter(PCA, !cont)
-  sexes   <- filter(MergedDat[[1]], cont)$Sex
-  title   <- as.character(MergedDat[[1]]$continent[cont][1])
-  p1 <- ggplot(highPCA, aes_string(x = x1, y = y1)) + 
-            geom_point(aes(color = sexes)) + 
-            geom_point(data = backPCA, alpha = 0.01, aes_string(x = x1, y = y1)) + 
-            theme_pubr() + 
-            ggtitle(title)
-  p1 <- ggpar(p1, palette = "jco")
-  return(p1)
-}
-
-p1 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AFR", "PC1", "PC2")
-p2 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AFR", "PC3", "PC4")
-p3 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AMR", "PC1", "PC2")
-p4 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "AMR", "PC3", "PC4")
-p5 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "EAS", "PC1", "PC2")
-p6 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "EAS", "PC3", "PC4")
-p7 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SAS", "PC1", "PC2")
-p8 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SAS", "PC3", "PC4")
-p9 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEU", "PC1", "PC2")
-p10 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "NEU", "PC3", "PC4")
-p11 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEU", "PC1", "PC2")
-p12 <- plotsexes(MergedDat[[2]], MergedDat[[1]]$continent == "SEU", "PC3", "PC4")
-
-ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, 
-          ncol = 2, nrow = 6,
-          common.legend = TRUE, legend = "bottom", 
-          align = "v")
 ```
 
 ## Hypohtesis testing
@@ -120,14 +43,27 @@ Therefore, we'll first remove Asian samples from our location difference tests.
 We'll test whether group averages differ between groups, by using a 5x2 design using continent and Sex as grouping variables.
 As shown, both continent and Sex (and their interaction) are significant predictors of face shape.
 
+```{r MANOVAS}
+fit <- lm(as.matrix(dplyr::select(MergedDat[[1]], starts_with("Face") ) ) ~ 
+                 MergedDat[[1]]$Sex * MergedDat[[1]]$prediction)
+Manova(fit, type = "III")
 
-```{r MANOVA}
-fit <- manova(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
-summary(fit)
+fit5 <- lm(as.matrix(dplyr::select(MergedDat[[1]], starts_with("Face") ) )[,1:5] ~ 
+                 MergedDat[[1]]$Sex * MergedDat[[1]]$prediction)
+Manova(fit5, type = "III")
 
-fit10 <- manova(as.matrix(MergedDat[[2]][,1:10]) ~ MergedDat[[1]]$Sex * MergedDat[[1]]$continent)
-summary(fit10)
+fit <- lm(as.matrix(dplyr::select(MergedDat[[1]], starts_with("Face") ) ) ~ 
+                MergedDat[[1]]$Sex * MergedDat[[1]]$prediction + MergedDat[[1]]$Height +
+                MergedDat[[1]]$BMI + MergedDat[[1]]$Age)
+Manova(fit, type = "III")
 
+fit5 <- lm(as.matrix(dplyr::select(MergedDat[[1]], starts_with("Face") ) )[,1:5] ~ 
+                 MergedDat[[1]]$Sex * MergedDat[[1]]$prediction + MergedDat[[1]]$Height +
+                MergedDat[[1]]$BMI + MergedDat[[1]]$Age)
+Manova(fit5, type = "III")
+```
+
+```{r permanova}
 #mahamatrix <- vegdist(MergedDat[[2]], method = "mahalanobis")
 #fit2 <- betadisper(mahamatrix, MergedDat[[1]]$continent)
 #plot(fit2)
@@ -143,8 +79,10 @@ This is preferred from an Euclidean distance, because the within-group variation
 As shown in the dendogram, EAS is the least similar group overall.
 
 ```{r mahal continent}
-madistcont <- pairwise.mahalanobis(MergedDat[[2]], MergedDat[[1]]$continent)
-dimnames(madistcont$distance) <- list(levels(MergedDat[[1]]$continent), levels(MergedDat[[1]]$continent))
+madistcont <- pairwise.mahalanobis(dplyr::select(MergedDat[[1]], starts_with("Face") ), 
+                                   MergedDat[[1]]$prediction)
+dimnames(madistcont$distance) <- list(levels(MergedDat[[1]]$prediction),
+                                      levels(MergedDat[[1]]$prediction))
 madistcont$distance
 plot(hclust(as.dist(madistcont$distance)))
 ```
@@ -155,9 +93,10 @@ Interestingly, American and European females cluster closer to the African branc
 Also, the continental group with the least difference between sexes is America, while the other groups have similar values.
 
 ```{r mahalanobis dist}
-madist <- pairwise.mahalanobis(MergedDat[[2]], interaction(MergedDat[[1]]$continent, MergedDat[[1]]$Sex))
-dimnames(madist$distance) <- list(levels(interaction(MergedDat[[1]]$continent, MergedDat[[1]]$Sex)),
-                                  levels(interaction(MergedDat[[1]]$continent, MergedDat[[1]]$Sex)))
+madist <- pairwise.mahalanobis(dplyr::select(MergedDat[[1]], starts_with("Face")),
+                               interaction(MergedDat[[1]]$prediction, MergedDat[[1]]$Sex))
+dimnames(madist$distance) <- list(levels(interaction(MergedDat[[1]]$prediction, MergedDat[[1]]$Sex)),
+                                  levels(interaction(MergedDat[[1]]$prediction, MergedDat[[1]]$Sex)))
 madist$distance
 plot(hclust(as.dist(madist$distance)))
 ```
@@ -168,124 +107,145 @@ Another approach is to calculate the sexual dimorphism vectors for each populati
 We can compare the magnitude and angle between vectors to assess the degree and pattern of facial sexual dimorphism respectively.
 For the pattern of SD (angle) we can use the cosine similarity measure to assess statistical significance of pairwise comparisons. 
 We can use permutation (permuting continent labels) to assess statistical significance.
-First, let's look at the position of each consensus face (continent x Sex).
-As seen in the first four PCs, Asian faces seem more divergent in the face space, corroborating the dendogram results.
-Also, looking at the male-female pairs, we see a similar direction in the first two PCs, while lower PCs seem to diverge more.
-
-```{r vector calculation}
-consensus <- MergedDat[[2]] %>% group_by(MergedDat[[1]]$continent, MergedDat[[1]]$Sex) %>%
-             summarise_all(funs(mean))
-colnames(consensus)[c(1,2)] <- c("continent", "Sex")
-consensus$groups <- paste(consensus$continent, consensus$Sex, sep = ".")
-
-plotsdmeans <- function(PCA, x1, y1) 
-{ 
-  p1 <- ggplot(PCA, aes_string(x = x1, y = y1)) + 
-            geom_point(alpha = 0.05) +
-            geom_point(data = consensus, 
-                       aes_string(
-                         x = x1, y = y1,
-                         color = "consensus$groups"), 
-                       size = 4) +
-            scale_color_discrete(name = "Groups") +
-            theme_pubr()
-  p1 <- ggpar(p1, palette = "jama")
-  return(p1)
-}
-
-p1 <- plotsdmeans(MergedDat[[2]], "PC1", "PC2")
-p2 <- plotsdmeans(MergedDat[[2]], "PC3", "PC4")
-p3 <- plotsdmeans(MergedDat[[2]], "PC5", "PC6")
-p4 <- plotsdmeans(MergedDat[[2]], "PC7", "PC8")
-ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2,
-          common.legend = TRUE, legend = "top", 
-          align = "v")
-```
-
-We can obtain the vector of total sexual dimorphism by subtracting the female to the male consensus face.
+We can obtain the vector of total sexual dimorphism with the beta coefficients from a regression of face shape on sex for each population.
 To obtain the allometric component, we run a multivariate linear regression of face shape against Sex, Height, and continent. 
-Also, we can compute manova tables to estimate the effect of Sex, Height, and continent on face shape (face PCs).
 In this case, we'll also estimate the Height by continent interaction, so as to compare the vectors between continental groups, if not, they would have the same vector.
 
+```{r regression models}
+matrix  <- dplyr::select(MergedDat[[1]], starts_with("Face"))
+covs    <- MergedDat[[1]] %>% dplyr::select(c("Sex", "Age", "Height", "BMI", "prediction"))
+covs[,c(2:4)] <- scale(covs[,c(2:4)])
+regressnon <- cbind(covs, matrix) %>% group_by(prediction) %>%
+  do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~ Sex + Height + BMI + Age
+                , data = .)) %>% tidy(model)
+
+regresstot <- cbind(covs, matrix) %>% group_by(prediction) %>%
+  do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~ Sex + BMI + Age
+                , data = .))
+regresstot <- regresstot %>% tidy(model)
+```
+
+
 ```{r SD decomposition}
-#TOTAL SD
-totalSD <- matrix(0, ncol = 88, nrow = 6)
-totalSD <- data.frame(totalSD)
-totalSD[,1] <- levels(consensus$continent)
-colnames(totalSD) <- c("continent", colnames(MergedDat[[2]]))
-
-row <- 1
-for(i in seq(1, 12, 2)){
-  totalSD[row, 2:88] <- consensus[i, 3:89] - consensus[i+1, 3:89] 
-  row = row + 1
+##TOTAL SD##
+extractRegress <- function(dat, filter, select){
+  coefs <- dat %>% group_by(prediction) %>% filter(term == filter) %>%
+    dplyr::select(select)
+  final <- as.data.frame(matrix(0, ncol = 88, nrow = 5))
+  colnames(final) <- c("Pop", colnames(dplyr::select(MergedDat[[1]], starts_with("Face") ) ) )
+  final$Pop       <- levels(MergedDat[[1]]$prediction)
+  for(i in 1:nrow(final)){
+    t <- coefs %>% filter(prediction == final[i,1])
+    final[i,2:88] <- c(t[,select])[[1]]
+  }
+  return(final)
 }
 
-#ALLOMETRIC SD
-fit <- lm(as.matrix(MergedDat[[2]]) ~ MergedDat[[1]]$Sex + MergedDat[[1]]$Weight +
-            MergedDat[[1]]$Height * MergedDat[[1]]$continent)
-summary(manova(fit))
-alloSD <- totalSD
-for(cont in 1:length(levels(MergedDat[[1]]$continent)))
-{
-  pca  <- dplyr::filter(MergedDat[[2]], 
-                        MergedDat[[1]]$continent == levels(MergedDat[[1]]$continent)[cont])
-  covs <- dplyr::filter(MergedDat[[1]], continent == levels(MergedDat[[1]]$continent)[cont])
-  fit  <- lm(as.matrix(pca) ~ covs$Sex + covs$Height)
-  alloSD[cont,2:88] <- coef(fit)[3,] * (mean(covs[covs$Sex == 'Female',5], na.rm = T) - 
-                                          mean(covs[covs$Sex == 'Male',5], na.rm = T))
+sexcoefstot   <- extractRegress(regresstot, "SexMale", "estimate")
+sexcoefstotse <- extractRegress(regresstot, "SexMale", "std.error")
+sexcoefstotunit <- sexcoefstot
+sexcoefstotunit[,2:87] <- t(apply(sexcoefstot[,2:87], 1, function(x) x/norm(x, type = "2")))
+
+sexcoefsnon   <- extractRegress(regressnon, "SexMale", "estimate")
+sexcoefsnonse <- extractRegress(regressnon, "SexMale", "std.error")
+
+heightcoefs   <- extractRegress(regressnon, "Height", "estimate")
+heightcoefsse <- extractRegress(regressnon, "Height", "std.error")
+```
+
+We can estimate the angles between the total and the allo and non allo
+
+```{r}
+for(i in 1:5){
+  an <- getAngle(sexcoefstot[i,2:88], sexcoefsnon[i,2:88])
+  print(an * 180 / pi)
 }
 
-#NON ALLOMETRIC
-nonalloSD <- totalSD
-nonalloSD[,2:88] <- totalSD[,2:88] - alloSD[,2:88]
+for(i in 1:5){
+  an <- getAngle(sexcoefstot[i,2:88], heightcoefs[i,2:88])
+  print(an * 180 / pi)
+}
+```
 
+
+We can see the percentage of the total and non allo SD that's represented in the first 5 PCS
+
+```{r 5PCs}
+for(i in 1:5){
+  perc <- norm(sexcoefstot[i,2:5], type = "2")^2 * 100 / norm(sexcoefstot[i,2:88], type = "2")^2
+  print(perc)
+}
+
+for(i in 1:5){
+  perc <- norm(sexcoefsnon[i,2:5], type = "2")^2 * 100 / norm(sexcoefsnon[i,2:88], type = "2")^2
+  print(perc)
+}
+
+for(i in 1:5){
+  perc <- norm(heightcoefs[i,2:5], type = "2")^2 * 100 / norm(heightcoefs[i,2:88], type = "2")^2
+  print(perc)
+}
 ```
 
 
 ```{r vector plots}
-plotvect <- function(PCA, x1, y1, vectors)
-{
-  p1 <- ggplot(PCA, aes_string(x = x1, y = y1)) +
-            geom_point(alpha = 0.05) + 
-            geom_segment(data = vectors, 
-                         aes_string(x = 0, y = 0,
-                                    xend = paste(x1, "*3", sep = ""), 
-                                    yend = paste(y1, "*3", sep = ""),
-                                    color = "continent"), 
-                 arrow = arrow(length = unit(0.03, "npc")), size = 1) +
-            scale_color_discrete(name = "Continent") + 
-            theme_pubr()
-  p1 <- ggpar(p1, palette = "jama")
+plotsquare <- function(PCA, x1, y1, vectors, se, xlim = NULL, ylim = NULL){
+  minmax  <- data.frame(ymin = vectors[,y1] - se[,y1], ymax = vectors[,y1] + se[,y1],
+                        xmin = vectors[,x1] - se[,x1], xmax = vectors[,x1] + se[,x1])
+  vectors <- cbind(vectors, minmax)
+  #lims    <- data.frame(y = max(abs(max(minmax[,1:2])), abs(min(minmax[,1:2]))), 
+  #                      x = max(abs(max(minmax[,3:4])), abs(min(minmax[,3:4]))) )
+  #lims <- lims + 0.2
+  xname <- gsub("^.*?_", "" , x1)
+  yname <- gsub("^.*?_", "" , y1)
+  p1   <- ggplot(PCA, aes_string(x = x1, y = y1)) +
+    geom_point(data = vectors, aes_string(x = x1, y = y1, color = "Pop"),
+               size = 3) +
+    geom_errorbar(data = vectors, aes(ymin = ymin, ymax = ymax, color = Pop)) + 
+    geom_errorbarh(data = vectors, aes(xmin = xmin, xmax = xmax, color = Pop)) + 
+    geom_segment(data = vectors, 
+                 aes_string(x = 0, y = 0,
+                            xend = paste(x1, "*1", sep = ""), 
+                            yend = paste(y1, "*1", sep = ""),
+                            color = "Pop"),
+                 alpha = 0.3, size = 2, lineend = "butt") +
+    #ylim(-lims$y, lims$y) +
+    #xlim(-lims$x, lims$x) + 
+    labs(x = xname, y = yname) +
+    theme(legend.title = element_text(size=18)) + #Change legend size 
+    theme(legend.text  = element_text(size=18)) + #Change text size
+    guides(color = guide_legend(override.aes = list(size = 10))) + #Change legend size
+    theme_pubr()
+  
+  if(is.null(xlim)){
+  } else {
+    p1 <- p1 + xlim(xlim[1], xlim[2])
+  }
+  if(is.null(ylim)){
+  } else {
+    p1 <- p1 + ylim(ylim[1], ylim[2])
+  }
+  
+  p1 <- ggpar(p1, palette = OkabeIto)
   return(p1)
 }
 
-p1 <- plotvect(MergedDat[[2]], "PC1", "PC2", totalSD)
-p2 <- plotvect(MergedDat[[2]], "PC3", "PC4", totalSD)
-p3 <- plotvect(MergedDat[[2]], "PC5", "PC6", totalSD)
-p4 <- plotvect(MergedDat[[2]], "PC7", "PC8", totalSD)
-p5 <- plotvect(MergedDat[[2]], "PC9", "PC10", totalSD)
-p6 <- plotvect(MergedDat[[2]], "PC11", "PC12", totalSD)
-ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
-          common.legend = TRUE, legend = "top", 
-          align = "v")
+p1 <- plotsquare(MergedDat[[1]], "Face_PC1", "Face_PC2", sexcoefstot, sexcoefstotse, 
+                 xlim = c(-0.1,2.8), ylim = c(-0.6, 1.8))
+p2 <- plotsquare(MergedDat[[1]], "Face_PC3", "Face_PC4", sexcoefstot, sexcoefstotse, 
+                 xlim = c(-0.5, 0.9), ylim = c(-0.5, 0.7))
+p3 <- plotsquare(MergedDat[[1]], "Face_PC1", "Face_PC2", sexcoefsnon, sexcoefsnonse, 
+                 xlim = c(-0.1,2.8), ylim = c(-0.6, 1.8))
+p4 <- plotsquare(MergedDat[[1]], "Face_PC3", "Face_PC4", sexcoefsnon, sexcoefsnonse, 
+                 xlim = c(-0.5, 0.9), ylim = c(-0.5, 0.7))
+p5 <- plotsquare(MergedDat[[1]], "Face_PC1", "Face_PC2", heightcoefs, heightcoefsse, 
+                 xlim = c(-0.1,2.8), ylim = c(-0.6, 1.8))
+p6 <- plotsquare(MergedDat[[1]], "Face_PC3", "Face_PC4", heightcoefs, heightcoefsse, 
+                 xlim = c(-0.5, 0.9), ylim = c(-0.5, 0.7))
 
-p1 <- plotvect(MergedDat[[2]], "PC1", "PC2", alloSD)
-p2 <- plotvect(MergedDat[[2]], "PC3", "PC4", alloSD)
-p3 <- plotvect(MergedDat[[2]], "PC5", "PC6", alloSD)
-p4 <- plotvect(MergedDat[[2]], "PC7", "PC8", alloSD)
-p5 <- plotvect(MergedDat[[2]], "PC9", "PC10", alloSD)
-p6 <- plotvect(MergedDat[[2]], "PC11", "PC12", alloSD)
-ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
-          common.legend = TRUE, legend = "top", 
-          align = "v")
 
-p1 <- plotvect(MergedDat[[2]], "PC1", "PC2", nonalloSD)
-p2 <- plotvect(MergedDat[[2]], "PC3", "PC4", nonalloSD)
-p3 <- plotvect(MergedDat[[2]], "PC5", "PC6", nonalloSD)
-p4 <- plotvect(MergedDat[[2]], "PC7", "PC8", nonalloSD)
-p5 <- plotvect(MergedDat[[2]], "PC9", "PC10", nonalloSD)
-p6 <- plotvect(MergedDat[[2]], "PC11", "PC12", nonalloSD)
-ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
+ggarrange(p1, p2, p3, p4, p5, p6,
+          nrow = 3, ncol = 2,
           common.legend = TRUE, legend = "top", 
           align = "v")
 ```
@@ -294,60 +254,86 @@ ggarrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2,
 Angles between total SD vectors
 
 ```{r angles, message=F}
-source("Distances.R")
-labscont   <- levels(consensus$continent)
+labscont   <- levels(MergedDat[[1]]$prediction)
 
-totangle   <- getPAngle(totalSD[,2:88])
-totangle10 <- getPAngle(totalSD[,2:11])
+totangle   <- getPAngle(sexcoefstot[,2:88])
+totanglesub <- getPAngle(sexcoefstot[,2:5])
 plot(hclust(as.dist(totangle)), labels = labscont, main = "Cluster Dendrogram Total SD")
-plot(hclust(as.dist(totangle10)), labels = labscont, main = "Cluster Dendrogram Total SD, subspace")
+plot(hclust(as.dist(totanglesub)), labels = labscont, main = "Cluster Dendrogram Total SD, subspace")
 
-alloang   <- getPAngle(alloSD[,2:88])
-alloang10 <- getPAngle(alloSD[,2:11])
+alloang    <- getPAngle(heightcoefs[,2:88])
+alloangsub <- getPAngle(heightcoefs[,2:5])
 plot(hclust(as.dist(alloang)), labels = labscont, main = "Cluster Dendrogram Allometric SD")
-plot(hclust(as.dist(alloang10)), labels = labscont, main = "Cluster Dendrogram Allometric SD, subspace")
+plot(hclust(as.dist(alloangsub)), labels = labscont, main = "Cluster Dendrogram Allometric SD, subspace")
 
-nalloang   <- getPAngle(nonalloSD[,2:88])
-nalloang10 <- getPAngle(nonalloSD[,2:11])
+nalloang    <- getPAngle(sexcoefsnon[,2:88])
+nalloangsub <- getPAngle(sexcoefsnon[,2:5])
 plot(hclust(as.dist(nalloang)), labels = labscont)
-plot(hclust(as.dist(nalloang10)), labels = labscont)
+plot(hclust(as.dist(nalloangsub)), labels = labscont)
 
-#Not working
-#nulls <- getAngleperm(MergedDat[[2]], MergedDat[[1]]$Sex, MergedDat[[1]]$continent)
-#pvals <- 
-#  for(i in 1:(nrow(nulls)))
-#  {
-#    
-#  }
-#sum(ma[1,2] < nulls[1,])/1000
-#sum(ma[1,3] < nulls[2,])/1000
-#sum(ma[1,4] < nulls[3,])/1000
-#sum(ma[1,5] < nulls[4,])/1000
-#sum(ma[1,6] < nulls[5,])/1000
-#sum(ma[2,3] < nulls[6,])/1000
-#sum(ma[2,4] < nulls[7,])/1000
-#sum(ma[2,5] < nulls[8,])/1000
-#sum(ma[2,6] < nulls[9,])/1000
-#sum(ma[3,4] < nulls[10,])/1000
-#sum(ma[3,5] < nulls[11,])/1000
-#sum(ma[3,6] < nulls[12,])/1000
-#sum(ma[4,5] < nulls[13,])/1000
-#sum(ma[4,6] < nulls[14,])/1000
-#sum(ma[5,6] < nulls[15,])/1000
+matrix  <- dplyr::select(MergedDat[[1]], starts_with("Face"))
+covs    <- MergedDat[[1]] %>% dplyr::select(c("Sex", "Age", "Height", "BMI", "prediction"))
+covs[,c(2:4)] <- scale(covs[,c(2:4)])
 
+null <- getAngleNull(matrix,  
+             covs[,1:4],
+             covs$prediction,
+             perm = 5000)
+
+nulltot <- getAngleNull(matrix,  
+             covs[,1:4],
+             covs$prediction,
+             perm = 5000,
+             type = "total")
+
+nullheight <- getAngleNull(matrix,  
+             covs[,1:4],
+             covs$prediction,
+             perm = 100,
+             maincov = "Height")
+
+for(i in 1:10){
+  pval <- sum(nulltot[i,] > totangle[lower.tri(totangle)][i]) / 5000
+  print(c(totangle[lower.tri(totangle)][i], pval) )
+}
+
+for(i in 1:10){
+  pval <- sum(null[i,] > nalloang[lower.tri(nalloang)][i]) / 5000
+  print(c(nalloang[lower.tri(nalloang)][i], pval) )
+}
+
+for(i in 1:10){
+  pval <- sum(nullheight[i,] > alloang[lower.tri(alloang)][i]) / 100
+  print(c(alloang[lower.tri(alloang)][i], pval) )
+}
+
+#Using the subspace
+null <- getAngleNull(matrix[,1:5],  
+             covs[,1:4],
+             covs$prediction,
+             perm = 5000)
+
+nulltot <- getAngleNull(matrix[,1:5],  
+             covs[,1:4],
+             covs$prediction,
+             perm = 5000,
+             type = "total")
+
+for(i in 1:10){
+  pval <- sum(nulltot[i,] > totanglesub[lower.tri(totanglesub)][i]) / 5000
+  print(c(totanglesub[lower.tri(totanglesub)][i], pval) )
+}
+
+for(i in 1:10){
+  pval <- sum(null[i,] > nalloangsub[lower.tri(nalloangsub)][i]) / 5000
+  print(c(nalloangsub[lower.tri(nalloangsub)][i], pval) )
+}
 ```
-
-We can compute the angle between the total an allometric SD for each group.
-
-```{r total allo angle}
-
-```
-
 
 To export the PCA vectors and visually compare the effects of sex on facial morphology, we will standardize them so to have the same magnitude across populations.
 To do that, we'll tranform each vector to a unit vector, using $\hat{u} = \frac{\overrightarrow{ {u} } {\|\overrightarrow{u}\|}$ 
 
-```{r standardize magnitude}
+```{r standardize magnitude, eval=FALSE}
 popvectors <- rbind(totalSD, alloSD, nonalloSD)
 cols       <- paste(c(rep("Total", 6), rep("Allo", 6), rep("NonAllo", 6)), popvectors[,1], sep = ".")
 popvectors <- as.data.frame(t(popvectors[, (-1)]))
@@ -362,7 +348,7 @@ apply(popvectunit, 2, function(x) norm_vec(x))
 
 ## Saving
 
-```{r save}
+```{r save, eval=FALSE}
 setwd(paste(path, "/Results/FSD", sep = ""))
 write.csv(popvectunit, file="popvectors.csv", quote = F, row.names = F)
 ```

@@ -11779,7 +11779,20 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>This code is to generate the Face PCA as well as to export such database</p>
+<p>This code is to generate the Face PCA as well as to export such database.
+The workflow follows as this:</p>
+<ul>
+<li>Open the necessary files, scripts, and data</li>
+<li>Remove the IDs than don't have Covariates or 3D face data</li>
+<li>PCA workflow:<ul>
+<li>Initial PCA taking a random sample of the same number of males and females, detect outliers using the mahalanobis distance with respect to the origin, and remove them</li>
+<li>New PCA using the non-outliers, and taking random sample of the same number of males and females</li>
+<li>To detect possible differences due to sampling errors, I will sample a number of <em>n</em> times and measure the correlation of the PC scores</li>
+<li>If correlation is high enough, take the first result of the PCA</li>
+</ul>
+</li>
+<li>Export final dataset</li>
+</ul>
 
 </div>
 </div>
@@ -11803,7 +11816,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="c">%Folders</span>
@@ -11864,7 +11877,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="p">[</span><span class="n">keep1</span><span class="p">,</span> <span class="n">keep2</span><span class="p">]</span> <span class="p">=</span> <span class="n">GetIntersection</span><span class="p">(</span><span class="n">Data</span><span class="p">,</span> <span class="n">Covariates</span><span class="p">);</span>
@@ -11920,7 +11933,121 @@ nCovariates =
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="PCA-Analysis-and-export">PCA Analysis and export<a class="anchor-link" href="#PCA-Analysis-and-export">&#182;</a></h2>
+<p>Get the number of males and females in the dataset</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="n">sum</span><span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">Covariates</span><span class="p">.</span><span class="n">Sex</span><span class="p">,</span> <span class="s">&#39;Female&#39;</span><span class="p">))</span>
+<span class="n">sum</span><span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">Covariates</span><span class="p">.</span><span class="n">Sex</span><span class="p">,</span> <span class="s">&#39;Male&#39;</span><span class="p">))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>
+ans =
+
+        3617
+
+
+ans =
+
+        2284
+
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Getting-centroid-size">Getting centroid size<a class="anchor-link" href="#Getting-centroid-size">&#182;</a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="n">CS</span> <span class="p">=</span> <span class="nb">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">size</span><span class="p">(</span><span class="n">Data</span><span class="p">.</span><span class="n">Shape</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span>
+<span class="k">for</span> <span class="nb">i</span> <span class="p">=</span> <span class="mi">1</span><span class="p">:</span><span class="nb">size</span><span class="p">(</span><span class="n">CS</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">obj</span> <span class="p">=</span> <span class="n">meshObj</span><span class="p">();</span>
+    <span class="n">obj</span><span class="p">.</span><span class="n">Faces</span>    <span class="p">=</span> <span class="n">RefScan</span><span class="p">.</span><span class="n">Faces</span><span class="p">;</span>
+    <span class="n">obj</span><span class="p">.</span><span class="n">Vertices</span> <span class="p">=</span> <span class="nb">reshape</span><span class="p">(</span><span class="n">Data</span><span class="p">.</span><span class="n">Shape</span><span class="p">(:,</span><span class="nb">i</span><span class="p">),</span> <span class="p">[</span><span class="mi">3</span> <span class="p">(</span><span class="nb">size</span><span class="p">(</span><span class="n">Data</span><span class="p">.</span><span class="n">Shape</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)]);</span>
+    <span class="n">CS</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">i</span><span class="p">)</span>      <span class="p">=</span> <span class="n">centroidSize</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+<span class="k">end</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre></pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="GPA">GPA<a class="anchor-link" href="#GPA">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11935,7 +12062,7 @@ nCovariates =
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="n">TotalShape</span> <span class="p">=</span> <span class="p">[</span><span class="n">Data</span><span class="p">.</span><span class="n">Shape</span><span class="p">,</span> <span class="n">Data</span><span class="p">.</span><span class="n">NormShape</span><span class="p">];</span> <span class="c">%Concatenation of original faces (Data.Shape) and their reflection (Data.Norm)</span>
@@ -11989,7 +12116,7 @@ connected to 4 workers.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="n">OrigHead</span> <span class="p">=</span> <span class="n">AlignedData</span><span class="p">(:,</span> <span class="mi">1</span><span class="p">:</span><span class="n">nFaces</span><span class="p">);</span>
@@ -12030,18 +12157,208 @@ connected to 4 workers.
 </div>
 
 </div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="nb">size</span><span class="p">(</span><span class="n">SymHead</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>
+ans =
+
+       20370        5939
+
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Running the Face PCA. We will retain the components that explain 98% of the variance</p>
+<p>Running the Face PCA. I will use a random sample of 2000 males and females</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="c">%[sample_fem, ind1]  = datasample(SymHead(:,strcmp(Covariates.Sex, &#39;Female&#39;)), 2000, 2);</span>
+
+<span class="c">%[sample_male, ind2] = datasample(SymHead(:,strcmp(Covariates.Sex, &#39;Male&#39;)), 2000, 2);</span>
+<span class="c">%total_sample = [sample_fem sample_male];</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre></pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="c">%vect = [1:size(SymHead(:,strcmp(Covariates.Sex, &#39;Female&#39;)), 2)];</span>
+<span class="c">%sum(~ismember(vect, ind1))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre></pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="c">%SymHead(:,strcmp(Covariates.Sex, &#39;Female&#39;))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre></pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="PCA">PCA<a class="anchor-link" href="#PCA">&#182;</a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="n">getAverage</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">SymHead</span><span class="p">);</span> <span class="c">%Compute the average head</span>
@@ -12106,6 +12423,60 @@ model =
 </div>
 
 </div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-matlab"><pre><span></span><span class="n">model</span><span class="p">.</span><span class="n">Tcoeff</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>
+ans =
+
+   -2.7500   -0.0476    1.4329    1.9755   -0.1145   -0.0344    0.4069   -0.3473    0.3787   -0.0347
+   -3.0011    0.1057    0.6759    2.1056    1.1979    0.2540   -0.4840   -0.2451   -0.1560    0.6118
+   -0.9400   -1.4434    1.2838    0.5728   -1.3678    0.4241   -0.2904   -0.1218    0.2807    0.5717
+   -2.5950    1.3977    0.8939    0.1309    0.5854    1.4701   -0.4995    0.8075   -0.1866   -0.1333
+    2.5805   -0.0855    0.0949   -0.1114    1.3244    0.6152    0.3337    0.1918    0.0475   -0.3890
+   -1.5390   -1.3281    2.0045   -0.8951    0.0862    0.0572   -0.8213    0.7036    0.0923   -0.2445
+    1.2813   -0.2222    1.3759   -2.5794    0.9949    1.3452    0.0238    1.9273   -0.1870   -0.4813
+    2.0618   -0.1109   -1.0123    0.6022   -0.4662   -0.3614    0.6623   -1.0766   -0.0339    0.7550
+    0.5504    1.3370   -1.6557   -0.0498    1.3299    0.4508   -0.1899    0.2561   -0.9428   -0.6860
+    0.9299    0.3762    2.2317   -1.2411    0.2449   -0.1337   -0.7296   -0.0513   -0.7487   -0.2872
+
+</pre>
+</div>
+</div>
+
+<div class="output_area">
+
+<div class="prompt"></div>
+
+
+<div class="output_subarea output_stream output_stderr output_text">
+<pre></pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
@@ -12125,7 +12496,7 @@ model =
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="n">origin</span>    <span class="p">=</span> <span class="nb">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">size</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">Tcoeff</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span> 
@@ -12182,10 +12553,11 @@ Below you can see the individual IDs identified as outliers</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-matlab"><pre><span></span><span class="n">Covariates</span><span class="p">.</span><span class="n">ID</span><span class="p">(</span><span class="n">isoutlier</span><span class="p">(</span><span class="n">mahaldist</span><span class="p">))</span>
+<div class=" highlight hl-matlab"><pre><span></span><span class="n">sum</span><span class="p">(</span><span class="n">isoutlier</span><span class="p">(</span><span class="n">mahaldist</span><span class="p">))</span>
+<span class="n">Covariates</span><span class="p">.</span><span class="n">ID</span><span class="p">(</span><span class="n">isoutlier</span><span class="p">(</span><span class="n">mahaldist</span><span class="p">))</span>
 </pre></div>
 
 </div>
@@ -12203,6 +12575,11 @@ Below you can see the individual IDs identified as outliers</p>
 
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>
+ans =
+
+   213
+
+
 ans =
 
   213×1 cell array
@@ -12464,6 +12841,7 @@ Also, we will compute BMI</p>
     <div class="input_area">
 <div class=" highlight hl-matlab"><pre><span></span><span class="n">PCnames</span>        <span class="p">=</span> <span class="n">strseq</span><span class="p">(</span><span class="s">&#39;PC&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="n">model</span><span class="p">.</span><span class="n">nrEV</span><span class="p">);</span>
 <span class="n">Covariates</span><span class="p">.</span><span class="n">BMI</span> <span class="p">=</span> <span class="n">Covariates</span><span class="p">.</span><span class="n">Weight</span> <span class="o">./</span> <span class="p">(</span> <span class="p">(</span><span class="n">Covariates</span><span class="p">.</span><span class="n">Height</span> <span class="o">./</span> <span class="mi">100</span><span class="p">)</span> <span class="o">.^</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">Covariates</span><span class="p">.</span><span class="n">CS</span>  <span class="p">=</span> <span class="n">CS</span><span class="o">&#39;</span><span class="p">;</span>
 <span class="n">coeffs</span>         <span class="p">=</span> <span class="p">[</span><span class="n">Covariates</span><span class="p">,</span> <span class="n">array2table</span><span class="p">(</span><span class="n">model</span><span class="p">.</span><span class="n">Tcoeff</span><span class="p">,</span> <span class="s">&#39;VariableNames&#39;</span><span class="p">,</span> <span class="n">PCnames</span><span class="p">)];</span>
 <span class="n">cd</span><span class="p">(</span><span class="n">folder</span><span class="p">.</span><span class="n">results</span><span class="p">)</span>
 <span class="n">csvwrite</span><span class="p">(</span><span class="s">&#39;eigenvalues.csv&#39;</span><span class="p">,</span> <span class="n">model</span><span class="p">.</span><span class="n">EigVal</span><span class="p">);</span>

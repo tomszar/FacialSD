@@ -8,87 +8,323 @@ In this section we will look at descriptive statistics from covariates, and from
 
 ## Preliminaries
 
-We will load the necessary libraries, and databases
+Libraries
 
-```{r libraries data, warning=FALSE, message=FALSE}
-library(ggplot2)
-library(dplyr)
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
 library(GGally)
 library(ggpubr)
-library(psych)
-library(ggjoy)
+library(ggridges)
+library(ggrepel)
+library(pophelper)
+source("PlotFaces.R")
+source("Distances.R")
+source("PlotPCs.R")
+```
+
+Databases
+
+```{r databases, warning=FALSE, message=FALSE}
 setwd('..')
 path <- getwd()
+setwd(paste(path, "/Results/MergedData", sep = ""))
+load("MergedDat.RData")
+MergedDat[[1]]$Sex <- as.factor(MergedDat[[1]]$Sex)
+MergedDat[[1]]$CS  <- log(MergedDat[[1]]$CS)
+
 setwd(paste(path, "/Results/FacePCA", sep = ""))
-coeffs   <- read.csv("coeffs.csv")
-eigenvec <- read.csv("eigenvectors.csv", header=F)
-eigenval <- read.csv("eigenvalues.csv", header=F)
-means    <- read.csv("means.csv", header=F)
-facets   <- read.csv("facets.csv", header=F)
+face.eigenvalues  <- read_delim("eigenvalues.csv", delim = " ", col_names = FALSE)
+face.eigenvectors <- read_csv("eigenvectors.csv", col_names = FALSE)
+face.facets       <- read_csv("facets.csv", col_names = FALSE)
+face.means        <- read_csv("means.csv", col_names = FALSE)
+
+setwd(paste(path, "/Results/GenPCA", sep = ""))
+gen.eigenvalues <- read_delim("PCA.eigenval", delim = " ", col_names = FALSE)
 ```
 
-## Data cleaning
+## Descriptive and exploratory analyses 
 
-For data cleaning, we will remove every individual that is neither Male or Female, and individuals with NAs in any variable (Height, Weight, and Age)
+We can look at some summaries.
+We have a total of `r nrow(MergedDat[[1]])` subjects with Genetic and Face data.
 
-```{r data cleaning}
-coeffs <- filter(coeffs, Sex == 'Female' | Sex == 'Male')
-coeffs <- droplevels(coeffs)
-coeffs <- na.omit(coeffs)
-dim(coeffs)
-head(coeffs[,1:8])
-```
+```{r summaries}
+MergedDat[[1]] %>% dplyr::select(c("Age", "Height", "CS", "Weight", "BMI") ) %>%
+  summarise_all(funs( mean(. , na.rm = T), sd(. , na.rm = T) )) %>% print()
 
-After cleaning, we end up with `r nrow(coeffs)` individuals
+MergedDat[[1]] %>% group_by(prediction, Sex) %>% dplyr::select(Age, Height, CS, Weight) %>% 
+            summarise_all(funs(mean(. , na.rm = T), sd(. , na.rm = T))) %>% print()
 
-## Descriptive stats
+sexbypop <- function(dat, var, y){
+  p1 <- ggplot(dat, aes(interaction(Sex, prediction), var, colour = prediction)) +
+    geom_boxplot() + 
+    theme_pubr() + 
+    labs(x = "Sex by population", colour = "Population", y = y) + 
+    scale_x_discrete(labels=c())
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
 
-We can look at summary statistics
+p1 <- sexbypop(MergedDat[[1]], MergedDat[[1]]$Height, "Height")
+p2 <- sexbypop(MergedDat[[1]], MergedDat[[1]]$Age, "Age")
+p3 <- sexbypop(MergedDat[[1]], MergedDat[[1]]$Weight, "Weight")
+p4 <- sexbypop(MergedDat[[1]], MergedDat[[1]]$BMI, "BMI")
+p5 <- sexbypop(MergedDat[[1]], MergedDat[[1]]$CS, "CS")
 
-```{r summary}
-summary(coeffs[,2:6])
-```
-
-As well as summary statistics grouped by sex, where we can see differences in height and weight.
-
-```{r summary by sex}
-describeBy(coeffs[,3:6], coeffs$Sex)
+ggarrange(p1, p2, p3, p4, p5,
+          common.legend = TRUE, legend = "right")
 ```
 
 We can also explore some correlograms
 
-```{r correlogram, fig.height = 8, fig.width = 12, fig.align = "center", message=FALSE}
-p1 <- ggpairs(coeffs, columns = 2:8, ggplot2::aes(colour=Sex, alpha = 0.1), 
+```{r correlogram, fig.height = 8, fig.width = 12, fig.align = "center", message=FALSE, warning=FALSE}
+p1 <- ggpairs(MergedDat[[1]], columns = c(3:8,10,11,60,61), ggplot2::aes(colour=Sex, alpha = 0.1), 
               lower = list(continuous = "smooth")) + theme_pubr()
+p1 <- ggpar(p1, palette = "jama")
 p1
 ```
 
-We can use joy plots to compare the distributions of each PC grouped by sex.
+### Face PCA
+
+PCA screeploy
+
+```{r face screeplot}
+barplot(c(as.matrix(face.eigenvalues)), 
+       main = "Face PCA Variances",
+       xlab = "Principal Components",
+       ylab = "Eigenvalue",
+       col = "steelblue")
+```
+
+In the case of the Face PCA, the first 10 PCs account for `r sum(face.eigenvalues[1:10,])/(sum(face.eigenvalues) * 100 / 98) *100` percent of the total variance, while the first 4 PCs account for `r sum(face.eigenvalues[1:4,])/(sum(face.eigenvalues) * 100 / 98) *100`
+
+We can use joy plots to compare the distributions of each face PC grouped by sex.
 Note that I'll use the mahalanobis space instead of the euclidean one.
 
-```{r joyplots, fig.height = 10, fig.width = 8, fig.align = "center", message=FALSE}
-source("PlotPCs.R")
-ts <- as.data.frame(scale(coeffs[,6:92]))
-p1 <- PlotPCs(ts, coeffs$Sex ,"PC1", "PC9")
-p2 <- PlotPCs(ts, coeffs$Sex, "PC10", "PC19")
-p3 <- PlotPCs(ts, coeffs$Sex, "PC20", "PC29")
-p4 <- PlotPCs(ts, coeffs$Sex, "PC30", "PC39")
+```{r face joyplots, fig.height = 10, fig.width = 8, fig.align = "center", message=FALSE}
+ts <- MergedDat[[1]] %>% select(starts_with("Face"))
+p1 <- PlotPCs(ts, MergedDat[[1]]$Sex ,"Face_PC1", "Face_PC9")
+p2 <- PlotPCs(ts, MergedDat[[1]]$Sex, "Face_PC10", "Face_PC19")
+p3 <- PlotPCs(ts, MergedDat[[1]]$Sex, "Face_PC20", "Face_PC29")
+p4 <- PlotPCs(ts, MergedDat[[1]]$Sex, "Face_PC30", "Face_PC39")
+remove(ts)
 ggarrange(p1, p2, p3, p4,
           common.legend = T, legend = "bottom")
-
-p1 <- PlotPCs(ts, coeffs$Sex, "PC40", "PC49")
-p2 <- PlotPCs(ts, coeffs$Sex, "PC50", "PC59")
-p3 <- PlotPCs(ts, coeffs$Sex, "PC60", "PC69")
-p4 <- PlotPCs(ts, coeffs$Sex, "PC70", "PC79")
-ggarrange(p1, p2, p3, p4, 
-          common.legend = T, legend = "bottom")
 ```
 
-## Saving database
+We can also see the distribution in the first PCs of sexes by each continental group
 
-We'll save the clean coeffs for future use.
+```{r sexes by continent plots, fig.height = 14, fig.width = 10}
+plotsexes <- function(PCA, cont, x1, y1){
+  highPCA <- filter(PCA, cont)
+  backPCA <- filter(PCA, !cont)
+  sexes   <- filter(MergedDat[[1]], cont)$Sex
+  title   <- as.character(MergedDat[[1]]$prediction[cont][1])
+  avgs    <- highPCA %>% select(x1, y1, Sex) %>% 
+                  group_by(Sex) %>% summarise_all(funs(mean))
+  p1 <- ggplot(highPCA, aes_string(x = x1, y = y1)) + 
+            geom_point(aes(color = sexes)) +
+            geom_point(data = avgs, size = 5, aes(color = Sex)) +
+            geom_point(data = avgs, size = 3, color = "black") +
+            geom_point(data = backPCA, alpha = 0.01, color = "black", aes_string(x = x1, y = y1)) + 
+            theme_pubr() + 
+            ggtitle(title)
+  p1 <- ggpar(p1, palette = "jco")
+  return(p1)
+}
 
-```{r saving, message=FALSE}
-setwd(paste(path, "/Results/FacePCA", sep = ""))
-write.csv(coeffs, file = "cleancoeffs.csv", quote = F, row.names = F)
+p1 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "AFR", "Face_PC1", "Face_PC2")
+p2 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "AFR", "Face_PC3", "Face_PC4")
+p3 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "AMR", "Face_PC1", "Face_PC2")
+p4 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "AMR", "Face_PC3", "Face_PC4")
+p5 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EAS", "Face_PC1", "Face_PC2")
+p6 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EAS", "Face_PC3", "Face_PC4")
+p7 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "SAS", "Face_PC1", "Face_PC2")
+p8 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "SAS", "Face_PC3", "Face_PC4")
+p9 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EUR", "Face_PC1", "Face_PC2")
+p10 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EUR", "Face_PC3", "Face_PC4")
+
+ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, 
+          ncol = 2, nrow = 5,
+          common.legend = TRUE, legend = "bottom", 
+          align = "v")
 ```
+
+### Genetic PCA
+
+Similarly, we can look at the genetic PCs with respect to populations
+
+PCA screeplot
+
+```{r screeplot, fig.height=4, fig.width=8} 
+barplot(c(as.matrix(gen.eigenvalues)), 
+       main = "Genetic PCA Variances",
+       xlab = "Principal Components",
+       ylab = "Eigenvalue",
+       col = "steelblue")
+```
+
+In the case of the Genetic PCA, the first 10 PCs account for no more than `r sum(gen.eigenvalues[1:10,])/sum(gen.eigenvalues) *100` percent of the total variance, while the first 4 PCs account for no more than `r sum(gen.eigenvalues[1:4,])/sum(gen.eigenvalues) *100`.
+
+We can use joy plots to compare the distributions of each genetic PC grouped by population.
+
+```{r joyplots, message=FALSE}
+source("PlotPCs.R")
+ts <- MergedDat[[1]] %>% select(starts_with("Gen"))
+p1 <- PlotPCs(ts, MergedDat[[1]]$prediction, "PC1", "PC9")
+p2 <- PlotPCs(ts, MergedDat[[1]]$prediction, "PC10", "PC19")
+p3 <- PlotPCs(ts, MergedDat[[1]]$prediction, "PC20", "PC29")
+p4 <- PlotPCs(ts, MergedDat[[1]]$prediction, "PC30", "PC39")
+ggarrange(p1, p2, p3, p4,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
+
+```
+
+This is the scatter plot of the 1000 Genomes populations.
+These are the at the 1000Genomes populations: 
+
+|POP | SUPER POP | Description                 
+|----|-----------|------------------------------------------------------
+|FIN | EUR       | Finnish in Finland 	
+|CHS | EAS       | Han Chinese South
+|GBR | EUR       | British from England and Scotland
+|PUR | AMR       | Puerto Rican in Puerto Rico
+|CLM | AMR       | Colombian in Medellin, Colombia
+|MXL | AMR       | Mexican Ancestry in Los Angeles, California
+|TSI | EUR       | Toscani in Italia
+|LWK | AFR       | Luhya in Webuye, Kenya
+|JPT | EAS       | Japanese in Tokyo, Japan
+|IBS | EUR       | Iberian populations in Spain
+|PEL | AMR       | Peruvian in Lima, Peru
+|CDX | EAS       | Chinese Dai in Xishuangbanna, China
+|YRI | AFR       | Yoruba in Ibadan, Nigeria 
+|KHV | EAS       | Kinh in Ho Chi Minh City, Vietnam
+|ASW | AFR       | African ancestry in Southwest USA
+|ACB | AFR       | African Caribbean in Barbados
+|CHB | EAS       | Han Chinese in Beijing, China
+|GIH | SAS       | Gujarati Indians in Houston, Texas
+|GWD | AFR       | Gambian in Western Division, The Gambia
+|PJL | SAS       | Punjabi in Lahore,Pakistan
+|MSL | AFR       | Mende in Sierra Leone
+|BEB | SAS       | Bengali in Bangladesh
+|ESN | AFR       | Esan in Nigeria
+|STU | SAS       | Sri Lankan Tamil in the UK
+|ITU | SAS       | Indian Telugu in the UK
+|CEU | EUR       | Utah residents with Northern and Western European ancestry from the CEPH collection
+
+
+```{r 1000genomes}
+plotoneg <- function(dat, x1, y1){
+  p1 <- ggplot(dat, aes_string(x = x1, y = y1, color = "super_pop")) +
+            geom_point(alpha = 0.3, size = 2) + labs(color = "Pop") +
+            theme_pubr()
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+
+p1 <- plotoneg(MergedDat[[2]], "PC1", "PC2")
+p2 <- plotoneg(MergedDat[[2]], "PC3", "PC4")
+p3 <- plotoneg(MergedDat[[2]], "PC5", "PC6")
+p4 <- plotoneg(MergedDat[[2]], "PC7", "PC8")
+p5 <- plotoneg(MergedDat[[2]], "PC9", "PC10")
+p6 <- plotoneg(MergedDat[[2]], "PC11", "PC12")
+
+ggarrange(p1, p2, p3, p4, p5, p6, 
+          nrow = 3, ncol = 2,
+          common.legend = TRUE, legend = "right", 
+          align = "v")
+```
+
+We can plot our samples with the centroid of the HapMap pops indicated.
+
+```{r 1000g plus adapt, fig.width=10, fig.height=4}
+meansone <- MergedDat[[2]] %>% group_by(pop, super_pop) %>% 
+            select(contains("PC")) %>% summarise_all(funs(mean))
+
+plotonesamp <- function(dat1, dat2, x1, y1){
+  x2 <- paste("Gen_", x1, sep = "")
+  y2 <- paste("Gen_", y1, sep = "")
+  colnames(dat2)[which(colnames(dat2) == x2)] <- x1
+  colnames(dat2)[which(colnames(dat2) == y2)] <- y1
+  p1 <- ggplot(data = dat2, aes_string(x1, y1)) + 
+                 geom_point(aes(colour = prediction), alpha = 0.3) +
+                  ggrepel::geom_label_repel(data = dat1, aes(label = pop), 
+                            alpha = 0.8) + 
+          theme_pubr(legend = "none")
+  p1 <- ggpar(p1, palette = "jama")
+  return(p1)
+}
+  
+p1 <- plotonesamp(meansone, MergedDat[[1]], "PC1", "PC2")
+p2 <- plotonesamp(meansone, MergedDat[[1]], "PC3", "PC4")
+
+ggarrange(p1, p2,
+          nrow = 1, ncol = 2,
+          align = "v")
+```
+
+Finally, let's take a look at the admixture analysis.
+Based on visual inspection, these are the approximate cluster by geography associations
+
+|Cluster | POP|
+|--------|----|
+|1       | NEU|
+|2       | EAS|
+|3       | SAS|
+|4       | SEU|
+|5       | AMR|
+|6       | AFR|
+
+
+```{r admixture, fig.width=10}
+groups <- tibble(IID = rownames(MergedDat[[3]]$Merge1000Gsamples.6.Q))
+groups <- groups %>% left_join(MergedDat[[1]], by = "IID") %>% select(IID, prediction)
+groups <- groups %>% left_join(MergedDat[[2]], by = "IID") %>% select(IID, prediction, super_pop, pop)
+groups <- groups %>%
+  mutate(super_pop = ifelse(is.na(prediction), as.character(super_pop), as.character(prediction)),
+         sample = ifelse(is.na(prediction), "1000Genomes", "ADAPT"),
+         pop = ifelse(is.na(prediction), as.character(pop), as.character(prediction))) %>%
+  select(IID, super_pop, pop, sample)
+
+cleanadmix <- MergedDat[[3]]$Merge1000Gsamples.6.Q %>% filter(!is.na(groups$pop))
+groups     <- groups %>% filter(!is.na(groups$pop))
+cleanadmix <- list("sample1"=cleanadmix)
+
+p1 <- plotQ(cleanadmix, returnplot=T, exportplot=F, quiet=T, basesize=11, showsp=F,
+            grplab=as.data.frame(groups[,c(4,2,3)]), ordergrp=TRUE, grplabangle = 90)
+plot(p1$plot[[1]])
+```
+
+## Face plots
+
+Here we'll look at some basic 3D plots of average facial morphology looking at the differences between populations and sexes
+
+```{r }
+avgcoords    <- MergedDat[[1]] %>% group_by(prediction, Sex) %>% select(contains("Face_")) %>% 
+                    summarise_all(funs(mean))
+avglandmarks <- apply(as.matrix(avgcoords[, 3:89] * 1) %*% t(as.matrix(face.eigenvectors)), 1, 
+                              function(x) x + t(face.means))
+
+source("Distances.R")
+eucdist <- tibble(AFR = rep(0, nrow(face.means)/3), 
+                  AMR = rep(0, nrow(face.means)/3), 
+                  EAS = rep(0, nrow(face.means)/3),
+                  EUR = rep(0, nrow(face.means)/3),
+                  SAS = rep(0, nrow(face.means)/3)) 
+                      
+col <- 1
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+for(i in seq(1, 10, 2)){
+  eucdist[, col] <- getDistance(avglandmarks[,i], avglandmarks[,i+1])
+  eucdist[, col] <- range01(eucdist[, col])
+  col <- col + 1
+}
+
+source("PlotFaces.R")
+
+#PlotMultipleFaces(avglandmarks[,1], as.data.frame(face.facets), as.data.frame(eucdist))
+PlotComparisonFaces(avglandmarks, as.data.frame(face.facets))
+```
+
+
+

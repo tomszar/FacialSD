@@ -110,8 +110,7 @@ getAngleperm <- function(matrix, factor, groups, perm = 1000)
       subgroups <- groups[logic]
       subfactor <- factor[logic]
       
-      nullvals <- replicate(perm,
-                            {
+      nullvals <- replicate(perm,{
                               resgroups <- sample(subgroups)
                               averages  <- submatrix %>% group_by(interaction(subfactor, resgroups)) %>% 
                                                summarise_all(funs(mean(., na.rm=T)))
@@ -127,3 +126,74 @@ getAngleperm <- function(matrix, factor, groups, perm = 1000)
   }
   return(nullmatrix)
 }
+
+getAngleNull <- function(matrix, covs, groups, perm = 1000, samplefrac = 1, type = "nonallo", maincov = "Sex"){
+  #Computes a null distribution of angles to test the significance of the first covariate
+  #Matrix is the set of numerical values, one observation per row.
+  #Covs is the set of independent variables to use, the first covariate will be used to construct the 
+  #null matrix
+  #Groupss is the grouping factor to compare the anlges
+  #Perm defines the number of permutations and samplesize defines the number of samples to be drawn
+  #for each first covariate group interaction
+  
+  row     <- 1
+  ngroups <- length(levels(groups))
+  matrix  <- as.data.frame(matrix)
+  covs    <- as.data.frame(covs)
+  nullmatrix <- matrix(0, ncol = perm, nrow = (ngroups * (ngroups-1) /2) )
+  set.seed(10)
+  for(r in 1:(ngroups-1)){
+    for(r2 in 2:ngroups){
+      if(r < r2){
+        logic     <- (groups == levels(groups)[r] | groups == levels(groups)[r2])
+        submatrix <- dplyr::filter(matrix, logic)
+        subgroups <- groups[logic]
+        subcovs   <- covs[logic,]
+        nullvals  <- replicate(perm,{
+                              t <- cbind(subcovs, subgroups, submatrix) %>% 
+                                   group_by(Sex, subgroups) %>% 
+                                   sample_frac(samplefrac)
+                              t$subgroups <- droplevels(t$subgroups)
+                              t$subgroups <- t$subgroups[sample(nrow(t))]
+                              if(maincov == "Sex"){
+                                if(type == "nonallo"){
+                                  coefs <- t %>% 
+                                    group_by(subgroups) %>%
+                                    do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~
+                                                    Sex + Height + BMI + Age, 
+                                                  data = .)) %>% tidy(model) %>% filter(term == "SexMale") %>%
+                                    dplyr::select("estimate", "subgroups")
+                                } else if(type == "total"){
+                                  coefs <- t %>% 
+                                    group_by(subgroups) %>%
+                                    do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~
+                                                    Sex +  BMI + Age, 
+                                                  data = .)) %>% tidy(model) %>% filter(term == "SexMale") %>%
+                                    dplyr::select("estimate", "subgroups")
+                                }
+                              } else if(maincov == "Height"){
+                                coefs <- t %>% 
+                                  group_by(subgroups) %>%
+                                  do(model = lm(as.matrix(dplyr::select(., starts_with("Face"))) ~
+                                                  Sex +  BMI + Age, 
+                                                data = .)) %>% tidy(model) %>% filter(term == "Height") %>%
+                                  dplyr::select("estimate", "subgroups")
+
+                              }
+                              
+                              vector1 <- coefs %>% 
+                                         filter(subgroups == levels(coefs$subgroups)[1]) %>% 
+                                         dplyr::select(estimate) %>% pull()
+                              vector2 <- coefs %>% 
+                                         filter(subgroups == levels(coefs$subgroups)[2]) %>% 
+                                         dplyr::select(estimate) %>% pull()
+                              return(getAngle(vector1, vector2))
+                                     })
+        nullmatrix[row, ] <- nullvals
+        row <- row + 1
+      }
+    }
+  }
+  return(nullmatrix)
+}
+
