@@ -126,7 +126,7 @@ $(document).ready(function () {
 <p>The steps to create the genetic PCA were as following:</p>
 <ul>
 <li>Remove of missing genotype data.</li>
-<li>LD pruning using a window size of 10kb and a VIF of 2.</li>
+<li>LD pruning using a window size of 50 SNPs, with 5 SNPs steps, and a VIF of 2.</li>
 <li>Only 1000Genomes samples were used to create the PCA, and our samples were projected there.</li>
 <li>A total of 50 PCs were extracted</li>
 </ul>
@@ -157,10 +157,13 @@ face.coeffs   &lt;- read_csv(&quot;coeffs.csv&quot;)
 #face.facets   &lt;- read_csv(&quot;facets.csv&quot;, col_names = F)
 face.coeffs$ID &lt;- as.character(face.coeffs$ID)
 
-#Calling 1000 Genomes sample
-setwd(paste(path, &quot;/Results/MergeGeno/Merge1000G&quot;, sep = &quot;&quot;))
-pops &lt;- read_delim(&quot;integrated_call_samples_v3.20130502.ALL.panel&quot;, delim = &quot;\t&quot;)
-colnames(pops)[1] &lt;- &quot;IID&quot;
+#Calling 1000 Genomes sample info
+setwd(paste(path, &quot;/Results/MergeGeno/MergeSamples/05_ReferenceSamples&quot;, sep = &quot;&quot;))
+pops_100g &lt;- read_delim(&quot;integrated_call_samples_v3.20130502.ALL.panel&quot;, delim = &quot;\t&quot;)
+colnames(pops_100g)[1] &lt;- &quot;IID&quot;
+#Calling HGDP sample info
+pops_hgdp &lt;- read_delim(&quot;SampleInformation.txt&quot;, delim = &quot;\t&quot;)
+colnames(pops_hgdp)[1] &lt;- &quot;IID&quot;
 
 #Calling admixture analysis
 setwd(paste(path, &quot;/Results/Admixture&quot;, sep = &quot;&quot;))
@@ -170,21 +173,21 @@ gen.admix[[1]] &lt;- gen.admix[[1]][!duplicated(gen.eigenvec$IID), ]
 gen.eigenvec   &lt;- gen.eigenvec[!duplicated(gen.eigenvec$IID), ] 
 rownames(gen.admix[[1]]) &lt;- gen.eigenvec$IID</code></pre>
 <pre class="r"><code>print(gen.eigenvec)</code></pre>
-<pre><code>## # A tibble: 7,628 x 52
-##    FID   IID          PC1       PC2        PC3      PC4       PC5      PC6
-##    &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
-##  1 1     50246   -0.00596  0.00664  -0.0396    -0.0131   0.00143   0.00717
-##  2 1     140719  -0.0109  -0.0138    0.00290    0.00469 -0.00142  -0.00804
-##  3 1     141802  -0.0108  -0.0138    0.00296    0.00458 -0.00180  -0.00839
-##  4 1     CVBV2    0.0157  -0.000658  0.00141    0.00683  0.00447   0.00944
-##  5 1     CVSN89   0.0173  -0.000637  0.00164    0.00266  0.000360  0.0146 
-##  6 2     50298   -0.00766  0.00476  -0.0427    -0.0160   0.00298  -0.00178
-##  7 2     141353  -0.00855 -0.0121    0.00171    0.00847  0.00209   0.0281 
-##  8 2     141429  -0.00792 -0.0118    0.00126    0.00945  0.00605   0.0275 
-##  9 2     CVSN141  0.0155  -0.00123   0.00365    0.00429 -0.00948   0.0183 
-## 10 2     CVSV152  0.0161  -0.00180  -0.0000688  0.00403 -0.00354   0.00780
-## # ... with 7,618 more rows, and 44 more variables: PC7 &lt;dbl&gt;, PC8 &lt;dbl&gt;,
-## #   PC9 &lt;dbl&gt;, PC10 &lt;dbl&gt;, PC11 &lt;dbl&gt;, PC12 &lt;dbl&gt;, PC13 &lt;dbl&gt;, PC14 &lt;dbl&gt;,
+<pre><code>## # A tibble: 8,568 x 52
+##    FID   IID           PC1     PC2     PC3     PC4     PC5    PC6      PC7
+##    &lt;chr&gt; &lt;chr&gt;       &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
+##  1 0     HGDP000~  0.00645 0.00503 0.00915 -0.0191 0.00993 0.0155 -0.00493
+##  2 0     HGDP000~  0.00585 0.00433 0.0127  -0.0200 0.00752 0.0174 -0.0112 
+##  3 0     HGDP000~  0.00537 0.00497 0.00955 -0.0220 0.0118  0.0235 -0.00839
+##  4 0     HGDP000~  0.00620 0.00403 0.0106  -0.0241 0.0107  0.0200 -0.00928
+##  5 0     HGDP000~  0.00609 0.00447 0.0116  -0.0208 0.00587 0.0176 -0.00324
+##  6 0     HGDP000~  0.00694 0.00448 0.0104  -0.0223 0.0119  0.0241 -0.00464
+##  7 0     HGDP000~ -0.00409 0.00146 0.0115  -0.0172 0.00634 0.0119 -0.00481
+##  8 0     HGDP000~  0.00606 0.00480 0.0120  -0.0212 0.00344 0.0137 -0.00659
+##  9 0     HGDP000~  0.00646 0.00447 0.0110  -0.0249 0.0110  0.0167 -0.00420
+## 10 0     HGDP000~  0.00621 0.00302 0.00611 -0.0171 0.0144  0.0171 -0.00684
+## # ... with 8,558 more rows, and 43 more variables: PC8 &lt;dbl&gt;, PC9 &lt;dbl&gt;,
+## #   PC10 &lt;dbl&gt;, PC11 &lt;dbl&gt;, PC12 &lt;dbl&gt;, PC13 &lt;dbl&gt;, PC14 &lt;dbl&gt;,
 ## #   PC15 &lt;dbl&gt;, PC16 &lt;dbl&gt;, PC17 &lt;dbl&gt;, PC18 &lt;dbl&gt;, PC19 &lt;dbl&gt;,
 ## #   PC20 &lt;dbl&gt;, PC21 &lt;dbl&gt;, PC22 &lt;dbl&gt;, PC23 &lt;dbl&gt;, PC24 &lt;dbl&gt;,
 ## #   PC25 &lt;dbl&gt;, PC26 &lt;dbl&gt;, PC27 &lt;dbl&gt;, PC28 &lt;dbl&gt;, PC29 &lt;dbl&gt;,
@@ -196,16 +199,16 @@ rownames(gen.admix[[1]]) &lt;- gen.eigenvec$IID</code></pre>
 <pre><code>## # A tibble: 5,726 x 94
 ##    ID    Sex      Age Height Weight   BMI    CS    PC1     PC2     PC3
 ##    &lt;chr&gt; &lt;chr&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-##  1 12001 Female   21.   164.   74.4  27.6  4.13 -2.75  -0.0476  1.43  
-##  2 12002 Male     19.   162.   78.6  29.8  4.14 -3.00   0.106   0.676 
-##  3 12004 Female   19.   164.   51.2  19.2  4.10 -0.940 -1.44    1.28  
-##  4 12005 Male     21.   161.   62.4  24.2  4.11 -2.60   1.40    0.894 
-##  5 12006 Male     21.   182.   76.5  23.0  4.10  2.58  -0.0855  0.0949
-##  6 12007 Female   22.   154.   48.7  20.4  4.07 -1.54  -1.33    2.00  
-##  7 12008 Female   23.   168.   53.0  18.8  4.05  1.28  -0.222   1.38  
-##  8 12009 Male     21.   180.   80.6  25.0  4.15  2.06  -0.111  -1.01  
-##  9 12010 Male     20.   169.   93.8  32.9  4.15  0.550  1.34   -1.66  
-## 10 12011 Male     20.   172.   60.3  20.3  4.14  0.930  0.376   2.23  
+##  1 12001 Female    21   164.   74.4  27.6  4.13 -2.75  -0.0476  1.43  
+##  2 12002 Male      19   162.   78.6  29.8  4.14 -3.00   0.106   0.676 
+##  3 12004 Female    19   164.   51.2  19.2  4.10 -0.940 -1.44    1.28  
+##  4 12005 Male      21   161.   62.4  24.2  4.11 -2.60   1.40    0.894 
+##  5 12006 Male      21   182.   76.5  23.0  4.10  2.58  -0.0855  0.0949
+##  6 12007 Female    22   154.   48.7  20.4  4.07 -1.54  -1.33    2.00  
+##  7 12008 Female    23   168.   53    18.8  4.05  1.28  -0.222   1.38  
+##  8 12009 Male      21   180.   80.6  25.0  4.15  2.06  -0.111  -1.01  
+##  9 12010 Male      20   169.   93.8  32.9  4.15  0.550  1.34   -1.66  
+## 10 12011 Male      20   172.   60.3  20.3  4.14  0.930  0.376   2.23  
 ## # ... with 5,716 more rows, and 84 more variables: PC4 &lt;dbl&gt;, PC5 &lt;dbl&gt;,
 ## #   PC6 &lt;dbl&gt;, PC7 &lt;dbl&gt;, PC8 &lt;dbl&gt;, PC9 &lt;dbl&gt;, PC10 &lt;dbl&gt;, PC11 &lt;dbl&gt;,
 ## #   PC12 &lt;dbl&gt;, PC13 &lt;dbl&gt;, PC14 &lt;dbl&gt;, PC15 &lt;dbl&gt;, PC16 &lt;dbl&gt;,
@@ -226,9 +229,32 @@ rownames(gen.admix[[1]]) &lt;- gen.eigenvec$IID</code></pre>
 </div>
 <div id="data-cleaning" class="section level2">
 <h2>Data cleaning</h2>
-<p>Creating new columns to plot 1000Genomes pops against our samples more easily.</p>
+<p>First we will create super_pop names similar to the ones in the 1000G samples.</p>
+<pre class="r"><code>pops_hgdp     &lt;- pops_hgdp[-nrow(pops_hgdp), ]
+pops_hgdp$IID &lt;- as.character(pops_hgdp$IID)
+
+#Changing the HGDP ID name 
+for(i in 1:nrow(pops_hgdp)){
+  n   &lt;- nchar(pops_hgdp$IID[i])
+  ze  &lt;- 5 - n 
+  add &lt;- paste0(&quot;HGDP&quot;, paste(rep(&quot;0&quot;, ze), collapse = &quot;&quot;))
+  pops_hgdp$IID[i] &lt;- paste0(add, pops_hgdp$IID[i])
+}</code></pre>
+<p>Now we will merge the HGDP and 1000G sample info in one dataframe</p>
+<pre class="r"><code>colnames(pops_hgdp)[c(3,5)] &lt;- c(&quot;pop&quot;, &quot;super_pop&quot;)
+pops &lt;- bind_rows(pops_100g[,1:3], pops_hgdp[,c(1,3,5)])
+
+#Changing super_pop names
+pops$super_pop[pops$super_pop == &quot;AFRICA&quot;]    &lt;- &quot;AFR&quot;
+pops$super_pop[pops$super_pop == &quot;AMERICA&quot;]   &lt;- &quot;AMR&quot;
+pops$super_pop[pops$super_pop == &quot;EAST_ASIA&quot;] &lt;- &quot;EAS&quot;
+pops$super_pop[pops$super_pop == &quot;EUROPE&quot;]    &lt;- &quot;EUR&quot;
+pops$super_pop[pops$super_pop == &quot;MIDDLE_EAST&quot;] &lt;- &quot;MDE&quot;
+pops$super_pop[pops$super_pop == &quot;OCEANIA&quot;]     &lt;- &quot;OCE&quot;
+pops$super_pop[pops$super_pop == &quot;CENTRAL_SOUTH_ASIA&quot;] &lt;- &quot;SAS&quot;</code></pre>
+<p>Creating new columns to plot 1000G pops against our samples more easily.</p>
 <pre class="r"><code>#Adding pop and super_pop names
-gen.eigenvec &lt;- gen.eigenvec %&gt;% left_join(pops, by = &quot;IID&quot;) %&gt;% select(-gender)
+gen.eigenvec &lt;- gen.eigenvec %&gt;% left_join(pops, by = &quot;IID&quot;)
 gen.eigenvec &lt;- gen.eigenvec %&gt;% mutate(pop = ifelse(is.na(pop), &quot;ADAPT&quot;, pop)) %&gt;% 
                                  mutate(super_pop = ifelse(is.na(super_pop), &quot;ADAPT&quot;, super_pop))
 
@@ -237,29 +263,29 @@ gen.eigenvec$super_pop &lt;- as.factor(gen.eigenvec$super_pop)</code></pre>
 <p>Because plink output is a normalized PCA, we de-normalized the PCA by multiplying the eigenvectors by the standard deviation.</p>
 <pre class="r"><code>gen.eigenvec[,3:52] &lt;- t(c(as.matrix(gen.eigenval)) * t(as.matrix(gen.eigenvec[,3:52])))
 print(gen.eigenvec)</code></pre>
-<pre><code>## # A tibble: 7,628 x 54
-##    FID   IID       PC1     PC2      PC3     PC4      PC5      PC6      PC7
-##    &lt;chr&gt; &lt;chr&gt;   &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-##  1 1     50246   -1.71  0.955  -1.30    -0.333   0.00705  0.0308   0.00256
-##  2 1     140719  -3.13 -1.98    0.0954   0.119  -0.00702 -0.0345   0.00554
-##  3 1     141802  -3.12 -1.98    0.0975   0.116  -0.00885 -0.0360   0.00520
-##  4 1     CVBV2    4.52 -0.0947  0.0464   0.174   0.0220   0.0405  -0.0725 
-##  5 1     CVSN89   4.96 -0.0916  0.0540   0.0677  0.00177  0.0625  -0.0606 
-##  6 2     50298   -2.20  0.685  -1.41    -0.408   0.0147  -0.00763 -0.00432
-##  7 2     141353  -2.46 -1.75    0.0562   0.215   0.0103   0.120    0.0232 
-##  8 2     141429  -2.27 -1.70    0.0415   0.240   0.0298   0.118    0.00400
-##  9 2     CVSN141  4.46 -0.177   0.120    0.109  -0.0468   0.0784  -0.0462 
-## 10 2     CVSV152  4.63 -0.259  -0.00227  0.103  -0.0175   0.0335  -0.0978 
-## # ... with 7,618 more rows, and 45 more variables: PC8 &lt;dbl&gt;, PC9 &lt;dbl&gt;,
-## #   PC10 &lt;dbl&gt;, PC11 &lt;dbl&gt;, PC12 &lt;dbl&gt;, PC13 &lt;dbl&gt;, PC14 &lt;dbl&gt;,
-## #   PC15 &lt;dbl&gt;, PC16 &lt;dbl&gt;, PC17 &lt;dbl&gt;, PC18 &lt;dbl&gt;, PC19 &lt;dbl&gt;,
-## #   PC20 &lt;dbl&gt;, PC21 &lt;dbl&gt;, PC22 &lt;dbl&gt;, PC23 &lt;dbl&gt;, PC24 &lt;dbl&gt;,
-## #   PC25 &lt;dbl&gt;, PC26 &lt;dbl&gt;, PC27 &lt;dbl&gt;, PC28 &lt;dbl&gt;, PC29 &lt;dbl&gt;,
-## #   PC30 &lt;dbl&gt;, PC31 &lt;dbl&gt;, PC32 &lt;dbl&gt;, PC33 &lt;dbl&gt;, PC34 &lt;dbl&gt;,
-## #   PC35 &lt;dbl&gt;, PC36 &lt;dbl&gt;, PC37 &lt;dbl&gt;, PC38 &lt;dbl&gt;, PC39 &lt;dbl&gt;,
-## #   PC40 &lt;dbl&gt;, PC41 &lt;dbl&gt;, PC42 &lt;dbl&gt;, PC43 &lt;dbl&gt;, PC44 &lt;dbl&gt;,
-## #   PC45 &lt;dbl&gt;, PC46 &lt;dbl&gt;, PC47 &lt;dbl&gt;, PC48 &lt;dbl&gt;, PC49 &lt;dbl&gt;,
-## #   PC50 &lt;dbl&gt;, pop &lt;fct&gt;, super_pop &lt;fct&gt;</code></pre>
+<pre><code>## # A tibble: 8,568 x 54
+##    FID   IID         PC1   PC2   PC3    PC4    PC5    PC6     PC7      PC8
+##    &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+##  1 0     HGDP00001  2.46 0.988 0.409 -0.664 0.120  0.119  -0.0354  0.0109 
+##  2 0     HGDP00003  2.23 0.850 0.567 -0.697 0.0909 0.134  -0.0802  0.0741 
+##  3 0     HGDP00005  2.05 0.975 0.427 -0.767 0.142  0.181  -0.0602  0.0417 
+##  4 0     HGDP00007  2.37 0.790 0.474 -0.840 0.130  0.154  -0.0665 -0.00546
+##  5 0     HGDP00009  2.33 0.876 0.518 -0.724 0.0709 0.136  -0.0232  0.0506 
+##  6 0     HGDP00011  2.65 0.878 0.466 -0.777 0.144  0.186  -0.0333  0.0871 
+##  7 0     HGDP00013 -1.56 0.286 0.515 -0.599 0.0766 0.0914 -0.0345  0.00527
+##  8 0     HGDP00015  2.32 0.942 0.537 -0.737 0.0416 0.105  -0.0472  0.0526 
+##  9 0     HGDP00017  2.47 0.876 0.490 -0.867 0.132  0.129  -0.0301  0.0747 
+## 10 0     HGDP00019  2.37 0.592 0.273 -0.595 0.174  0.132  -0.0491  0.0873 
+## # ... with 8,558 more rows, and 44 more variables: PC9 &lt;dbl&gt;, PC10 &lt;dbl&gt;,
+## #   PC11 &lt;dbl&gt;, PC12 &lt;dbl&gt;, PC13 &lt;dbl&gt;, PC14 &lt;dbl&gt;, PC15 &lt;dbl&gt;,
+## #   PC16 &lt;dbl&gt;, PC17 &lt;dbl&gt;, PC18 &lt;dbl&gt;, PC19 &lt;dbl&gt;, PC20 &lt;dbl&gt;,
+## #   PC21 &lt;dbl&gt;, PC22 &lt;dbl&gt;, PC23 &lt;dbl&gt;, PC24 &lt;dbl&gt;, PC25 &lt;dbl&gt;,
+## #   PC26 &lt;dbl&gt;, PC27 &lt;dbl&gt;, PC28 &lt;dbl&gt;, PC29 &lt;dbl&gt;, PC30 &lt;dbl&gt;,
+## #   PC31 &lt;dbl&gt;, PC32 &lt;dbl&gt;, PC33 &lt;dbl&gt;, PC34 &lt;dbl&gt;, PC35 &lt;dbl&gt;,
+## #   PC36 &lt;dbl&gt;, PC37 &lt;dbl&gt;, PC38 &lt;dbl&gt;, PC39 &lt;dbl&gt;, PC40 &lt;dbl&gt;,
+## #   PC41 &lt;dbl&gt;, PC42 &lt;dbl&gt;, PC43 &lt;dbl&gt;, PC44 &lt;dbl&gt;, PC45 &lt;dbl&gt;,
+## #   PC46 &lt;dbl&gt;, PC47 &lt;dbl&gt;, PC48 &lt;dbl&gt;, PC49 &lt;dbl&gt;, PC50 &lt;dbl&gt;, pop &lt;fct&gt;,
+## #   super_pop &lt;fct&gt;</code></pre>
 </div>
 <div id="clustering" class="section level2">
 <h2>Clustering</h2>
@@ -275,31 +301,31 @@ svm.fit    &lt;- train(super_pop ~ PC1 + PC2 + PC3 + PC4 + PC5, method = 'svmRad
 svm.fit</code></pre>
 <pre><code>## Support Vector Machines with Radial Basis Function Kernel 
 ## 
-## 2504 samples
+## 3444 samples
 ##    5 predictor
-##    5 classes: 'AFR', 'AMR', 'EAS', 'EUR', 'SAS' 
+##    7 classes: 'AFR', 'AMR', 'EAS', 'EUR', 'MDE', 'OCE', 'SAS' 
 ## 
 ## No pre-processing
 ## Resampling: Cross-Validated (5 fold, repeated 5 times) 
-## Summary of sample sizes: 2004, 2003, 2003, 2003, 2003, 2003, ... 
+## Summary of sample sizes: 2755, 2754, 2755, 2755, 2757, 2753, ... 
 ## Resampling results across tuning parameters:
 ## 
 ##   C     Accuracy   Kappa    
-##   0.25  0.9929688  0.9911219
-##   0.50  0.9931281  0.9913228
-##   1.00  0.9935281  0.9918282
+##   0.25  0.9890229  0.9864962
+##   0.50  0.9908811  0.9887785
+##   1.00  0.9925650  0.9908482
 ## 
-## Tuning parameter 'sigma' was held constant at a value of 1.63901
+## Tuning parameter 'sigma' was held constant at a value of 2.263738
 ## Accuracy was used to select the optimal model using the largest value.
-## The final values used for the model were sigma = 1.63901 and C = 1.</code></pre>
+## The final values used for the model were sigma = 2.263738 and C = 1.</code></pre>
 <pre class="r"><code>#error aca
 clusters &lt;- gen.eigenvec %&gt;% filter(super_pop == &quot;ADAPT&quot;) %&gt;% select(IID)
 clusters &lt;- clusters %&gt;% mutate(prediction = predict(svm.fit, droplevels(gen.eigenvec %&gt;%
                                                     filter(super_pop == &quot;ADAPT&quot;) )) ) 
 gen.eigenvec &lt;- gen.eigenvec %&gt;% left_join(clusters, by = &quot;IID&quot;)
 summary(gen.eigenvec$prediction)</code></pre>
-<pre><code>##  AFR  AMR  EAS  EUR  SAS NA's 
-## 1145  904  211 2739  125 2504</code></pre>
+<pre><code>##  AFR  AMR  EAS  EUR  MDE  OCE  SAS NA's 
+## 1098  751  223 2715  167    0  170 3444</code></pre>
 </div>
 <div id="combining-datasets" class="section level2">
 <h2>Combining datasets</h2>

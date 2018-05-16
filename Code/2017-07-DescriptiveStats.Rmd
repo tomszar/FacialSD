@@ -140,11 +140,13 @@ p5 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EAS", "Face_PC1", 
 p6 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EAS", "Face_PC3", "Face_PC4")
 p7 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "SAS", "Face_PC1", "Face_PC2")
 p8 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "SAS", "Face_PC3", "Face_PC4")
-p9 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EUR", "Face_PC1", "Face_PC2")
-p10 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EUR", "Face_PC3", "Face_PC4")
+p9 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "MDE", "Face_PC1", "Face_PC2")
+p10 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "MDE", "Face_PC3", "Face_PC4")
+p11 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EUR", "Face_PC1", "Face_PC2")
+p12 <- plotsexes(MergedDat[[1]], MergedDat[[1]]$prediction == "EUR", "Face_PC3", "Face_PC4")
 
-ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, 
-          ncol = 2, nrow = 5,
+ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12,
+          ncol = 2, nrow = 6,
           common.legend = TRUE, legend = "bottom", 
           align = "v")
 ```

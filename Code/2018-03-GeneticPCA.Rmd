@@ -47,10 +47,13 @@ face.coeffs   <- read_csv("coeffs.csv")
 #face.facets   <- read_csv("facets.csv", col_names = F)
 face.coeffs$ID <- as.character(face.coeffs$ID)
 
-#Calling 1000 Genomes sample
-setwd(paste(path, "/Results/MergeGeno/Merge1000G", sep = ""))
-pops <- read_delim("integrated_call_samples_v3.20130502.ALL.panel", delim = "\t")
-colnames(pops)[1] <- "IID"
+#Calling 1000 Genomes sample info
+setwd(paste(path, "/Results/MergeGeno/MergeSamples/05_ReferenceSamples", sep = ""))
+pops_100g <- read_delim("integrated_call_samples_v3.20130502.ALL.panel", delim = "\t")
+colnames(pops_100g)[1] <- "IID"
+#Calling HGDP sample info
+pops_hgdp <- read_delim("SampleInformation.txt", delim = "\t")
+colnames(pops_hgdp)[1] <- "IID"
 
 #Calling admixture analysis
 setwd(paste(path, "/Results/Admixture", sep = ""))
@@ -69,11 +72,44 @@ print(face.coeffs)
 
 ## Data cleaning
 
-Creating new columns to plot 1000Genomes pops against our samples more easily.
+First we will create super_pop names similar to the ones in the 1000G samples.
+
+```{r super_pop naming}
+pops_hgdp     <- pops_hgdp[-nrow(pops_hgdp), ]
+pops_hgdp$IID <- as.character(pops_hgdp$IID)
+
+#Changing the HGDP ID name 
+for(i in 1:nrow(pops_hgdp)){
+  n   <- nchar(pops_hgdp$IID[i])
+  ze  <- 5 - n 
+  add <- paste0("HGDP", paste(rep("0", ze), collapse = ""))
+  pops_hgdp$IID[i] <- paste0(add, pops_hgdp$IID[i])
+}
+
+```
+
+Now we will merge the HGDP and 1000G sample info in one dataframe
+
+```{r}
+colnames(pops_hgdp)[c(3,5)] <- c("pop", "super_pop")
+pops <- bind_rows(pops_100g[,1:3], pops_hgdp[,c(1,3,5)])
+
+#Changing super_pop names
+pops$super_pop[pops$super_pop == "AFRICA"]    <- "AFR"
+pops$super_pop[pops$super_pop == "AMERICA"]   <- "AMR"
+pops$super_pop[pops$super_pop == "EAST_ASIA"] <- "EAS"
+pops$super_pop[pops$super_pop == "EUROPE"]    <- "EUR"
+pops$super_pop[pops$super_pop == "MIDDLE_EAST"] <- "MDE"
+pops$super_pop[pops$super_pop == "OCEANIA"]     <- "OCE"
+pops$super_pop[pops$super_pop == "CENTRAL_SOUTH_ASIA"] <- "SAS"
+```
+
+
+Creating new columns to plot 1000G pops against our samples more easily.
 
 ```{r new column}
 #Adding pop and super_pop names
-gen.eigenvec <- gen.eigenvec %>% left_join(pops, by = "IID") %>% select(-gender)
+gen.eigenvec <- gen.eigenvec %>% left_join(pops, by = "IID")
 gen.eigenvec <- gen.eigenvec %>% mutate(pop = ifelse(is.na(pop), "ADAPT", pop)) %>% 
                                  mutate(super_pop = ifelse(is.na(super_pop), "ADAPT", super_pop))
 
