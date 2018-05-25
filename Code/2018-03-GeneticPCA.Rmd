@@ -48,7 +48,7 @@ face.coeffs   <- read_csv("coeffs.csv")
 face.coeffs$ID <- as.character(face.coeffs$ID)
 
 #Calling 1000 Genomes sample info
-setwd(paste(path, "/Results/MergeGeno/MergeSamples/05_ReferenceSamples", sep = ""))
+setwd(paste(path, "/DataBases/Genotypes/05_ReferenceSamples", sep = ""))
 pops_100g <- read_delim("integrated_call_samples_v3.20130502.ALL.panel", delim = "\t")
 colnames(pops_100g)[1] <- "IID"
 #Calling HGDP sample info
