@@ -20,13 +20,15 @@ The workflow can be summarized as follows:
 
 ## Content
 
-The links below will take you to the proper analysis.
+The links below will take you to the step-by-step analysis.
 Each link is in sequential order, many of them building on the output from the previous scripts.
 The general idea is first to generate the corresponding PCAs for facial and genetic data, and merge them.
 
-- Here you can see the generation of the [Face PCA](Code/2017-11-FacePCA.html). 
-- Here you can see the clustering of the [Genetic PCA](Code/2018-03-GeneticPCA.html). 
-**Note:** the genetic PCA was made in plink, using only the 1000 Genomes individuals to create the PCA, and then projecting our samples.
+- Here you can see the generation of the [Face PCA](https://nbviewer.jupyter.org/github/tomszar/FacialSD/blob/master/Code/2017-11-FacePCA.ipynb). 
+- [Here](https://nbviewer.jupyter.org/github/tomszar/FacialSD/blob/master/Code/2018-05-MergeGenotypes.ipynb) you can see the merging of genotype data with the reference samples. 
+Note that the merging of the reference samples was done [elsewhere](https://tomszar.github.io/HGDP_1000G_Merge/).
+- Here you can see the clustering using the [Genetic PCA](Code/2018-03-GeneticPCA.html). 
+**Note:** the genetic PCA was made in plink, using only the reference samples (1000G and HGDP) to create the PCA, and then projecting our samples.
 - Here you can see some [descriptive statistics](Code/2017-07-DescriptiveStats.html) from the merged data set.
 - Here is the [hypothesis testing](Code/2017-07-HTesting.html) on the effect of sex and height on the face, using the whole dataset.
 This is also the preliminary analysis on the allometric and non-allometric decomposition.
