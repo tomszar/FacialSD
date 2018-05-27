@@ -124,6 +124,18 @@ gen.eigenvec[,3:52] <- t(c(as.matrix(gen.eigenval)) * t(as.matrix(gen.eigenvec[,
 print(gen.eigenvec)
 ```
 
+## Distance
+
+We will run a distance estimation using the first 10 PCs.
+From that, we will create a hierarchical clustering and select the different populations as K.
+
+```{r}
+eudist <- dist(gen.eigenvec[gen.eigenvec$super_pop == "ADAPT", 3:12])
+#cutree(hclust(eudist), k = 5)
+plot(hclust(eudist))
+```
+
+
 ## Clustering
 
 For the clustering approach, we'll use the super_pop variables from 1000Genomes.
