@@ -6,7 +6,7 @@
 #PBS -j oe
 
 #Move to work folder
-cd ~/work
+cd ~/work/Admixture
 
 #Run admixture with k = 2 to 15, with cross-validation, and 4 processors
 for k in {2..15}
