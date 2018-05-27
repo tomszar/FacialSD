@@ -35,5 +35,5 @@ done
 #For each chromosome run the script
 for i in {1..22}
 do
-	java -jar beagle.24May18.276.jar gt=Cleaned_split_${i}.recode.vcf ref=chr${i}.1kg.phase3.v5a.b37.bref map=plink.chr${i}.GRCh37.map out=Cleaned_phased impute=false 
+	java -jar beagle.24May18.276.jar gt=Cleaned_split_${i}.recode.vcf ref=chr${i}.1kg.phase3.v5a.b37.bref map=plink.chr${i}.GRCh37.map out=Cleaned_phased_chr${i} impute=false 
 done
