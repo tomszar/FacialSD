@@ -21,8 +21,10 @@ mv impute_v2.3.2_x86_64_static/impute2 ~/work/phasing/impute2
 
 #Download Genetic map and reference samples for hg 19 coordinates in scratch 
 cd ~/scratch
-wget -q https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
-tar -zxvf 1000GP_Phase3.tgz
+if [ ! -f 1000GP_Phase3.tgz ]; then
+	wget -q https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
+	tar -zxvf 1000GP_Phase3.tgz
+fi
 
 #For chr 1 to 22 create the pbs script and submit it to the cluster
 cd ~/work/phasing
