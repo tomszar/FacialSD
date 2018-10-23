@@ -24,7 +24,7 @@ mu = mean(X);
 Xm = bsxfun(@minus, X, mu);
 %C = cov(Xm);
 [U, S, V] = rsvd(Xm, K); 
-score = U*S;
+scores = U*S;
 
 if (Panalysis == 1)
   [mean_eigenvals, index] = PA(Xm, K);

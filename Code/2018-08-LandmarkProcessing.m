@@ -36,28 +36,22 @@ clear landmark_matrix;
 group_counts  = accumarray(ic,1);
 group_counts
 
-%We'll get a random sample of 160 for each group to run the PCA
-rand_ids = cell();
-for i = 1:7
-  t = randsample(ids(groups==i), 160);
-  rand_ids = {rand_ids{:} t{:}};
-endfor
-[~ , keep] = intersect(landmark_ids, rand_ids);
-sample_shape_matrix = shape_matrix(keep,:);
-[V,S,~,mean_eigenvals,index] = fastPCA(sample_shape_matrix, 100, 1);
+%Run PCA with whole sample
+[V,S,score,mean_eigenvals,index] = fastPCA(shape_matrix, 100, 1);
 #Looking at the number of relevant PCs
 plot(diag(S),'bo-');
 hold on;
 plot(mean_eigenvals,'ro-');
 hold off;
-%Getting PCA scores for whole sample
-mu = mean(shape_matrix);
-Xm = bsxfun(@minus, shape_matrix, mu);
-score = Xm*V(:,1:index); #Keeping only relevant PCs
+%Getting PCA scores for relevant PCs
+mu    = mean(shape_matrix);
+score = score(:,1:index);
+V     = V(:,1:index);
 %Eigenvalue is (diag(S).^2)/(n-1)
 
 %Testing accuracy of PCA
 %Calculating euclidean distance between original and PCA transformed faces
+fromPCA   = score * V' + mu;
 distances = distancePoints(shape_matrix, fromPCA, 'diag');
 distances_rand = distancePoints(shape_matrix, fromPCA(randperm(size(fromPCA,1)), :), 'diag');
 hist(distances,'bo-');
@@ -65,12 +59,28 @@ hold on;
 hist(distances_rand,'ro-');
 hold off;
 
+#Plot average faces
+avg_scores = zeros(7, size(score,2));
+for (i = 1:7)
+  [~ , keep] = intersect(landmark_ids, ids(groups==i));
+  avg_scores(i,:) = mean(score(keep,:));
+endfor
+from_avgscores = avg_scores * V' + mu;
+
+p = size(fromPCA, 2)/3;
+coords = reshape(from_avgscores(5,:), [3, p] )';
+position = 0;
+dist = [0.8 0.8 0.8];
+trisurf(landmark_facets, coords(:,1), coords(:,2), coords(:,3), 'facecolor', dist);
+view(2);
+axis off;
+
 %Saving files
 cd(folder.save)
 cell2csv("landmark_ids.csv", landmark_ids)
-csvwrite("means.csv", mu') %Perhaps the exported mu should be the one used in fastPCA?
+csvwrite("means.csv", mu')
 csvwrite("cs.csv", cs') 
 csvwrite("scores.csv", score) 
 csvwrite("eigenvalues.csv", diag(S) ) 
-csvwrite("eigenvectors.csv", V(:,1:index) ) 
+csvwrite("eigenvectors.csv", V ) 
 csvwrite("facets.csv", landmark_facets ) 
