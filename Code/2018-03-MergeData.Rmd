@@ -1,0 +1,63 @@
+---
+title: Genetic PCA
+output:
+  html_document: default
+---
+
+This script will merge the different datasets into a single one. 
+The datasets to be merged are:
+- Face PCA 
+- Clustering results
+- Covariates (age, sex, weight, height)
+
+
+## Preliminaries
+
+Libraries
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+Datasets
+
+```{r datasets, message=FALSE, warning=FALSE}
+setwd('..')
+path <- getwd()
+
+#Calling clustering results
+setwd(paste(path, "/DataBases", sep = ""))
+fs_ibd <- read_csv("IBD_FS.csv")
+ks <- paste("k", 2:10, sep = "")
+fs_ibd <- fs_ibd %>% mutate_each(funs(factor), ks)
+
+#Calling covariates
+covs <- read_csv("Covariates.csv", col_types = cols(ID = col_character() ) )
+covs <- covs %>% mutate(Sex = as.factor(Sex))
+#Calculate BMI
+covs <- covs %>% mutate(BMI = Weight / (Height /100) ^2 )
+
+#Calling facePCA
+setwd(paste(path, "/Results/FacePCA", sep = ""))
+face.scores   <- read_csv("scores.csv", col_names = FALSE)
+face.ids      <- read_csv("landmark_ids.csv", col_names = "ID", col_types = cols(ID = col_character()) )
+face.cs       <- read_csv("cs.csv", col_names = "CS")
+colnames(face.scores)[1:ncol(face.scores)] <- paste("FacePC", 1:ncol(face.scores), sep="")
+face.scores <- bind_cols(face.ids, face.scores, face.cs)
+
+```
+
+Merging and saving
+
+```{r}
+#Combining datasets
+MergedDat <- face.scores %>% left_join(fs_ibd, by = "ID") %>% left_join(covs, by = "ID")
+#Removing non binary sex
+MergedDat <- MergedDat %>% filter(Sex == "Male" | Sex == "Female") %>% mutate(Sex = droplevels(Sex))
+#Removing NAs
+MergedDat <- na.omit(MergedDat)
+setwd(paste(path, "/Results/MergedData", sep = ""))
+save(MergedDat, file = "MergedDat.RData")
+write_csv(MergedDat, "MergedDat.csv")
+```
+
